@@ -136,9 +136,12 @@ export default function Home() {
   useEffect(() => {
     if (!isSeeking) return;
 
-    const handleMove = (event: MouseEvent | TouchEvent) => {
-      const clientX =
-        "touches" in event ? event.touches[0]?.clientX : event.clientX;
+    const handleMouseMove = (event: MouseEvent) => {
+      seekToClientX(event.clientX);
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      const clientX = event.touches[0]?.clientX;
       if (typeof clientX === "number") {
         seekToClientX(clientX);
       }
@@ -146,16 +149,16 @@ export default function Home() {
 
     const handleUp = () => setIsSeeking(false);
 
-    const touchOpts = { passive: true };
+    const touchOpts: AddEventListenerOptions = { passive: true };
 
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("touchmove", handleMove, touchOpts);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("touchmove", handleTouchMove, touchOpts);
     window.addEventListener("mouseup", handleUp);
     window.addEventListener("touchend", handleUp);
 
     return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("touchmove", handleMove, touchOpts);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchmove", handleTouchMove, touchOpts);
       window.removeEventListener("mouseup", handleUp);
       window.removeEventListener("touchend", handleUp);
     };
