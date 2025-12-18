@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
+import { NavBar } from "@/components/custom/nav-bar";
+import { AuthSessionProvider } from "@/components/providers/session-provider";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -26,9 +28,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${poppins.variable} ${geistMono.variable} antialiased bg-zinc-950 text-zinc-50`}
+        className={`${poppins.variable} ${geistMono.variable} bg-background text-foreground antialiased`}
       >
-        {children}
+        <AuthSessionProvider>
+          <NavBar />
+          {children}
+        </AuthSessionProvider>
       </body>
     </html>
   );
