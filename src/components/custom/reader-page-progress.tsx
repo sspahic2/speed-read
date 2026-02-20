@@ -78,11 +78,11 @@ const ProgressBlock = memo(function ProgressBlock({
   activeWordRef,
 }: ProgressBlockProps) {
   return (
-    <div className={cn("space-y-2", getBlockTextClass(block.type))}>
+    <div className={cn("space-y-1", getBlockTextClass(block.type))}>
       {block.rows.map((row, rowIdx) => (
         <p
           key={`${block.id}-row-${rowIdx}`}
-          className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-sm leading-7 md:text-base md:leading-7"
+          className="flex flex-wrap items-stretch gap-x-1.5 gap-y-1 text-sm leading-7 md:text-base md:leading-7"
         >
           {row.map(({ word, offset }) => {
             const isActiveWord = isActiveBlock && offset === activeWordOffset;
@@ -165,18 +165,18 @@ export function ReaderPageProgress({
       aria-label={`Reading progress on page ${page}`}
       className={cn("relative overflow-hidden", className)}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_75%_at_50%_0%,hsl(var(--primary)/0.09),transparent_72%)]" />
+      <div className="pointer-events-none absolute inset-0" />
 
       <div
         ref={scrollContainerRef}
         onScroll={updateBottomFade}
-        className="reader-page-progress-scroll relative h-full overflow-y-auto px-4 pb-5 pt-1 md:px-6 md:pb-6"
+        className="reader-page-progress-scroll relative h-full overflow-y-auto px-6 pb-5 pt-1 md:px-6 md:pb-6"
         style={{ contentVisibility: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {pageBlocks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No readable text was found for this page.</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-1">
             {pageBlocks.map((block) => (
               <ProgressBlock
                 key={block.id}
@@ -192,7 +192,7 @@ export function ReaderPageProgress({
 
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background via-background/65 to-transparent backdrop-blur-sm transition-opacity duration-200",
+          "pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-background via-background/65 to-transparent backdrop-blur-sm transition-opacity duration-200",
           showBottomFade ? "opacity-100" : "opacity-0",
         )}
       />

@@ -93,25 +93,27 @@ export default function ReaderPage() {
                         : "pointer-events-none -translate-y-4 scale-[1.01] opacity-0",
                     )}
                   >
-                    <div className="flex flex-col items-center gap-2">
-                      {displayedPastWords.length > 0 ? (
-                        displayedPastWords.map((word, idx) => (
-                          <span
-                            key={`past-${idx}-${wordIndex}`}
-                            className="whitespace-nowrap text-center text-muted-foreground opacity-70"
-                            style={{
-                              fontSize: `${Math.max(fontSize * 0.55, 14)}px`,
-                              lineHeight: 1.4,
-                            }}
-                          >
-                            {word}
+                    <div className="flex flex-col items-center justify-center gap-2 md:flex-row md:gap-8">
+                      <div className="flex min-h-[1.2em] items-center justify-center md:min-w-[8ch]">
+                        {displayedPastWords.length > 0 ? (
+                          displayedPastWords.map((word, idx) => (
+                            <span
+                              key={`past-${idx}-${wordIndex}`}
+                              className="whitespace-nowrap text-center text-muted-foreground opacity-70"
+                              style={{
+                                fontSize: `${Math.max(fontSize * 0.55, 14)}px`,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {word}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="select-none text-transparent" aria-hidden="true">
+                            .
                           </span>
-                        ))
-                      ) : (
-                        <span className="h-[1.2em] select-none text-transparent" aria-hidden="true">
-                          .
-                        </span>
-                      )}
+                        )}
+                      </div>
                       <span
                         key={wordIndex}
                         className="focus-word whitespace-nowrap font-semibold tracking-tight"
@@ -119,24 +121,26 @@ export default function ReaderPage() {
                       >
                         {currentWord}
                       </span>
-                      {displayedFutureWords.length > 0 ? (
-                        displayedFutureWords.map((word, idx) => (
-                          <span
-                            key={`future-${idx}-${wordIndex}`}
-                            className="whitespace-nowrap text-center text-muted-foreground opacity-70"
-                            style={{
-                              fontSize: `${Math.max(fontSize * 0.55, 14)}px`,
-                              lineHeight: 1.4,
-                            }}
-                          >
-                            {word}
+                      <div className="flex min-h-[1.2em] items-center justify-center md:min-w-[8ch]">
+                        {displayedFutureWords.length > 0 ? (
+                          displayedFutureWords.map((word, idx) => (
+                            <span
+                              key={`future-${idx}-${wordIndex}`}
+                              className="whitespace-nowrap text-center text-muted-foreground opacity-70"
+                              style={{
+                                fontSize: `${Math.max(fontSize * 0.55, 14)}px`,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {word}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="select-none text-transparent" aria-hidden="true">
+                            .
                           </span>
-                        ))
-                      ) : (
-                        <span className="h-[1.2em] select-none text-transparent" aria-hidden="true">
-                          .
-                        </span>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

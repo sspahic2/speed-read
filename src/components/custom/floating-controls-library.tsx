@@ -392,7 +392,7 @@ export function FloatingControlsLibrary({
         </DrawerTrigger>
         <DrawerContent
           forceMount
-          className="data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:h-[100dvh] data-[vaul-drawer-direction=bottom]:rounded-none"
+          className="data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:h-dvh data-[vaul-drawer-direction=bottom]:rounded-none"
         >
           <DrawerHeader>
             <DrawerTitle>Library controls</DrawerTitle>
