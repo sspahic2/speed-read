@@ -38,7 +38,7 @@ export function useUploadAndIgnore() {
 
   const ignoredRef = useRef<Map<string, boolean>>(new Map());
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
-  const tocUpdateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const tocUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const tocIndexRef = useRef<Map<string, number>>(new Map());
 
   const pages = useMemo(() => {
@@ -86,10 +86,25 @@ export function useUploadAndIgnore() {
     }, 300);
   }, [buildTocItems]);
 
+  useEffect(() => {
+    return () => {
+      if (tocUpdateTimeoutRef.current) {
+        clearTimeout(tocUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const setBlockIgnored = useCallback(
     (id: string, ignored: boolean) => {
       // Update ref immediately
       ignoredRef.current.set(id, ignored);
+      setTocItems((prev) => {
+        const idx = tocIndexRef.current.get(id);
+        if (idx === undefined || !prev[idx] || prev[idx].ignored === ignored) return prev;
+        const next = [...prev];
+        next[idx] = { ...next[idx], ignored };
+        return next;
+      });
       // Schedule TOC update (debounced) - this will trigger refreshTrigger after delay
       scheduleTocUpdate();
     },
@@ -98,6 +113,8 @@ export function useUploadAndIgnore() {
 
   const onBulkUpdate = useCallback(
     (ids: string[], ignored: boolean) => {
+      if (ids.length === 0) return;
+      const idsSet = new Set(ids);
       // Update all refs first
       ids.forEach((id) => {
         ignoredRef.current.set(id, ignored);
@@ -105,12 +122,15 @@ export function useUploadAndIgnore() {
 
       // Build the entire new tocItems array in one go
       setTocItems((prev) => {
-        return prev.map((item) => {
-          if (ids.includes(item.id)) {
-            return { ...item, ignored };
+        let changed = false;
+        const next = prev.map((item) => {
+          if (!idsSet.has(item.id) || item.ignored === ignored) {
+            return item;
           }
-          return item;
+          changed = true;
+          return { ...item, ignored };
         });
+        return changed ? next : prev;
       });
 
       scheduleTocUpdate();
@@ -233,7 +253,6 @@ export function useUploadAndIgnore() {
     handleSubmit,
     handleSave,
     pages,
-    scheduleTocUpdate,
     refreshTrigger,
   };
 }

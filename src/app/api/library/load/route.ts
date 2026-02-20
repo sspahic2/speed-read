@@ -32,8 +32,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "fileId and fileKey are required" }, { status: 400 });
     }
 
-    const progress = await getReaderProgress(session.user.id, fileId).catch(() => null);
-    const raw = await downloadJsonFromBlob(fileUrl || fileKey);
+    const progressPromise = getReaderProgress(session.user.id, fileId).catch(() => null);
+    const rawPromise = downloadJsonFromBlob(fileUrl || fileKey);
+    const [progress, raw] = await Promise.all([progressPromise, rawPromise]);
     const blocks = Array.isArray(raw?.blocks)
       ? raw.blocks
           .filter((b: any) => !b?.ignored)

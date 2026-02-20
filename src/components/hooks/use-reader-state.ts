@@ -8,6 +8,11 @@ import { saveReaderProgress } from "@/services/frontend-services/library-service
 
 type Block = { id: string; text?: string; page?: number };
 type Word = { word: string; blockId: string; offset: number; page?: number };
+type LibraryLoadPayload = {
+  blocks: LibraryBlock[];
+  progress: ReaderProgressRecord | null;
+  fileId: string;
+};
 
 const DEFAULT_SAMPLE_BLOCKS: LibraryBlock[] = [
   { id: "sample-1", text: "Welcome to Speed Reader. Sign in and pick a book from your library to start reading.", type: "paragraph", page: 1 },
@@ -47,7 +52,6 @@ export function useReaderState() {
   const [currentFileId, setCurrentFileId] = useState<string | null>(null);
   const [loadedProgress, setLoadedProgress] = useState<ReaderProgressRecord | null>(null);
   const [cacheVersion, setCacheVersion] = useState(0);
-  const [loadedPageList, setLoadedPageList] = useState<number[]>([]);
 
   // Refs
   const rampStartRef = useRef<number | null>(null);
@@ -71,7 +75,6 @@ export function useReaderState() {
   // Derived state
   const currentBlock = blocks[currentBlockIndex];
   const currentWords = cacheRef.current.get(currentBlock?.id ?? "") ?? [];
-  currentWordsRef.current = currentWords;
   currentBlockIndexRef.current = currentBlockIndex;
   blocksRef.current = blocks;
 
@@ -90,6 +93,10 @@ export function useReaderState() {
 
   const currentPage = currentBlock?.page ?? blocks[0]?.page ?? 1;
   const currentPageIndices = pageIndexMap.get(currentPage) ?? [];
+  const currentPageBlocks = useMemo(
+    () => currentPageIndices.map((idx) => blocks[idx]).filter((block): block is LibraryBlock => !!block),
+    [currentPageIndices, blocks],
+  );
   const currentPageTotalWords = useMemo(
     () => currentPageIndices.reduce((sum, idx) => sum + (wordCounts[idx] ?? 0), 0),
     [currentPageIndices, wordCounts],
@@ -114,17 +121,34 @@ export function useReaderState() {
   const progressValue = totalWords > 0 ? ((wordsBeforeCurrent + clampedWordIndex) / Math.max(totalWords - 1, 1)) * 100 : 0;
   const pageProgressValue = currentPageTotalWords > 0 ? ((wordsBeforeCurrentInPage + clampedWordIndex) / Math.max(currentPageTotalWords - 1, 1)) * 100 : 0;
 
+  const currentBlockId = currentBlock?.id ?? "";
+  const sampleFallbackWords = useMemo(() => {
+    const text = currentBlock?.text?.trim();
+    return text ? text.split(/\s+/) : [];
+  }, [currentBlock?.id, currentBlock?.text]);
+  const activeWords = useMemo<Word[]>(() => {
+    if (currentWords.length > 0) return currentWords;
+    if (currentFileId) return [];
+    return sampleFallbackWords.map((word, offset) => ({
+      word,
+      blockId: currentBlockId,
+      offset,
+      page: currentPage,
+    }));
+  }, [currentWords, currentFileId, sampleFallbackWords, currentBlockId, currentPage]);
+  currentWordsRef.current = activeWords;
+
   const displayedPastWords = useMemo(() => {
-    const prev = currentWords[wordIndex - 1]?.word;
+    const prev = activeWords[wordIndex - 1]?.word;
     return prev ? [prev] : [];
-  }, [currentWords, wordIndex]);
+  }, [activeWords, wordIndex]);
 
   const displayedFutureWords = useMemo(() => {
-    const next = currentWords[wordIndex + 1]?.word;
+    const next = activeWords[wordIndex + 1]?.word;
     return next ? [next] : [];
-  }, [currentWords, wordIndex]);
-
-  const currentWord = currentWords[wordIndex]?.word ?? (currentWords.length ? "" : currentFileId ? "Loading..." : "Select a book from your library to begin.");
+  }, [activeWords, wordIndex]);
+  const activeWordIndex = Math.min(wordIndex, Math.max(activeWords.length - 1, 0));
+  const currentWord = activeWords[activeWordIndex]?.word ?? (currentFileId ? "Loading..." : "");
 
   // Helper functions
   const ensureBlocks = useCallback((indices: number[]) => {
@@ -156,8 +180,8 @@ export function useReaderState() {
     }
   }, [currentFileId]);
 
-  const handleLibraryLoad = useCallback((payload: any) => {
-    const incomingBlocks = (payload.blocks ?? []).map((b: any) => ({
+  const handleLibraryLoad = useCallback((payload: LibraryLoadPayload) => {
+    const incomingBlocks = payload.blocks.map((b) => ({
       ...b,
       page: normalizePageNumber(b.page),
     }));
@@ -168,8 +192,9 @@ export function useReaderState() {
     setCurrentFileId(payload.fileId);
 
     if (incomingBlocks.length) {
-      const startIndex = payload.progress?.blockId
-        ? Math.max(0, incomingBlocks.findIndex((b: any) => b.id === payload.progress.blockId))
+      const progressBlockId = payload.progress?.blockId;
+      const startIndex = progressBlockId
+        ? Math.max(0, incomingBlocks.findIndex((b) => b.id === progressBlockId))
         : 0;
       setCurrentBlockIndex(Math.max(startIndex, 0));
       setWordIndex(payload.progress?.offset ?? 0);
@@ -216,14 +241,14 @@ export function useReaderState() {
     }
     if (prevIsPlayingRef.current && !isPlaying && !seekInProgressRef.current) {
       rampStartRef.current = null;
-      saveProgress(currentBlock?.id ?? "", clampedWordIndex);
+      saveProgress(currentBlockId, clampedWordIndex);
     }
     prevIsPlayingRef.current = isPlaying;
-  }, [isPlaying, currentBlock, clampedWordIndex, saveProgress]);
+  }, [isPlaying, currentBlockId, clampedWordIndex, saveProgress]);
 
   useEffect(() => {
-    if (!isPlaying || seekInProgressRef.current || !currentBlock || !currentWords.length) {
-      if (!currentWords.length && currentBlock) {
+    if (!isPlaying || seekInProgressRef.current || !currentBlockId || !activeWords.length) {
+      if (!activeWords.length && currentBlockId && currentFileId) {
         ensurePagesAround(currentPage);
       }
       return;
@@ -291,7 +316,7 @@ export function useReaderState() {
       tickTokenRef.current += 1;
       if (tickTimeoutRef.current !== null) window.clearTimeout(tickTimeoutRef.current);
     };
-  }, [isPlaying, wpm, rampSeconds, currentWords.length, currentBlock, currentPage, saveProgress, ensurePagesAround]);
+  }, [isPlaying, wpm, rampSeconds, activeWords.length, currentBlockId, currentPage, currentFileId, saveProgress, ensurePagesAround]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -303,11 +328,6 @@ export function useReaderState() {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
-
-  useEffect(() => {
-    const pages = Array.from(new Set(blocks.map((b) => b.page ?? 1))).sort((a, b) => a - b);
-    setLoadedPageList(pages);
-  }, [blocks]);
 
   const seekToPercent = useCallback((percent: number) => {
     if (totalWords <= 0) return;
@@ -359,8 +379,8 @@ export function useReaderState() {
 
   const endSeek = useCallback(() => {
     seekInProgressRef.current = false;
-    saveProgress(currentBlock?.id ?? "", clampedWordIndex);
-  }, [currentBlock, clampedWordIndex, saveProgress]);
+    saveProgress(currentBlockId, clampedWordIndex);
+  }, [currentBlockId, clampedWordIndex, saveProgress]);
 
   const createSettingChangeHandler = (setter: (v: number) => void) => (value: number) => {
     setIsPlaying(false);
@@ -381,10 +401,13 @@ export function useReaderState() {
     currentWord,
     displayedPastWords,
     displayedFutureWords,
-    wordsLength: currentWords.length,
+    wordsLength: activeWords.length,
     progressValue,
     pageProgressValue,
     currentPage,
+    currentPageBlocks,
+    currentBlockId,
+    currentWordOffset: clampedWordIndex,
     seekToPercent,
     seekWithinPage,
     endSeek,

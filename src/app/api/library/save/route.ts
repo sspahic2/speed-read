@@ -34,16 +34,15 @@ export async function POST(request: Request) {
     const fileName = body.fileName || "library.json";
 
     const userId = session.user.id;
-    await ensureUserFolder(userId);
     const fileKey = `${userId}/${randomUUID()}.json`;
 
-    const uploadResult = await uploadJsonToBlob(fileKey, { blocks });
+    const ensureFolderPromise = ensureUserFolder(userId);
+    const uploadPromise = uploadJsonToBlob(fileKey, { blocks });
+    const [uploadResult] = await Promise.all([uploadPromise, ensureFolderPromise]);
     const storedKey = uploadResult.pathname ?? uploadResult.key ?? fileKey;
     const storedUrl = uploadResult.url ?? fileKey;
 
-    await Promise.all([
-      recordLibraryFile(userId, storedKey, storedUrl, fileName),
-    ]);
+    await recordLibraryFile(userId, storedKey, storedUrl, fileName);
 
     return NextResponse.json({ ok: true, fileKey: storedKey, url: storedUrl });
   } catch (error) {

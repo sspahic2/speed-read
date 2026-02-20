@@ -6,7 +6,6 @@ import { Slider } from "@/components/ui/slider";
 import type { FloatingControlsSide } from "@/components/hooks/use-floating-controls";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { listLibraryFiles, loadLibraryFile } from "@/services/frontend-services/library-service";
 import { BookOpen } from "lucide-react";
 import type { UseLibraryLoaderReturn } from "@/components/hooks/use-library-loader";
 

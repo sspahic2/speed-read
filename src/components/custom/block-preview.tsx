@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useRef, useState, useCallback } from "react";
+import { memo, useState, useCallback } from "react";
 import { cn } from "@/components/lib/utils";
 import { CheckCircle2, XCircle } from "lucide-react";
 
@@ -34,10 +34,10 @@ function BlockPreviewComponent({ block, ignoredRef, onSetIgnored, refreshTrigger
   
   const paragraphClass =
     block.type === "heading"
-      ? "text-center font-semibold uppercase tracking-[0.3em] text-foreground/90"
+      ? "text-center font-semibold uppercase tracking-[0.3em] text-foreground/90 break-words [overflow-wrap:anywhere]"
       : block.type === "special_paragraph"
-        ? "italic text-foreground/80"
-        : "text-foreground/90 text-justify";
+        ? "italic text-foreground/80 break-words [overflow-wrap:anywhere]"
+        : "text-foreground/90 text-justify break-words [overflow-wrap:anywhere]";
 
   const handleIgnore = () => {
     setPendingIgnored(true);
@@ -73,7 +73,7 @@ function BlockPreviewComponent({ block, ignoredRef, onSetIgnored, refreshTrigger
           className={cn(
             "inline-flex h-7 items-center justify-center rounded-md px-2.5 text-xs font-medium transition-colors border bg-transparent focus-visible:bg-transparent active:bg-transparent",
             currentIgnored
-              ? "border-destructive bg-destructive text-slate-900"
+              ? "border-destructive bg-destructive text-destructive-foreground"
               : "border-destructive/60 text-muted-foreground hover:border-destructive hover:text-destructive hover:bg-transparent",
           )}
         >
@@ -86,8 +86,8 @@ function BlockPreviewComponent({ block, ignoredRef, onSetIgnored, refreshTrigger
           className={cn(
             "inline-flex h-7 items-center justify-center rounded-md px-2.5 text-xs font-medium transition-colors border bg-transparent focus-visible:bg-transparent active:bg-transparent",
             !currentIgnored
-              ? "border-emerald-400 bg-emerald-300 text-slate-900"
-              : "border-emerald-400/60 text-muted-foreground hover:border-emerald-300 hover:text-emerald-300 hover:bg-transparent",
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-primary/60 text-muted-foreground hover:border-primary hover:text-primary hover:bg-transparent",
           )}
         >
           <CheckCircle2 className="h-4 w-4" aria-hidden />

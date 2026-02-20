@@ -30,7 +30,6 @@ export default function LibraryExtractPage() {
     handleSubmit,
     handleSave,
     pages,
-    scheduleTocUpdate,
     refreshTrigger,
   } = useUploadAndIgnore();
   const [tocSide] = useState<FloatingControlsSide>("left");
@@ -105,7 +104,7 @@ export default function LibraryExtractPage() {
         </Card>
 
         <section
-          className="rounded-4xl bg-card/40 px-6 pt-12 shadow-inner shadow-black/20"
+          className="rounded-4xl bg-card/40 px-4 pt-12 shadow-inner shadow-black/20 sm:px-6 overflow-x-hidden"
           style={{ minHeight: "100vh" }}
         >
           <header className="pb-6 text-center">
@@ -121,23 +120,18 @@ export default function LibraryExtractPage() {
               Upload a PDF or EPUB to see the extracted blocks in a book-like view.
             </div>
           ) : (
-            <div className="relative">
+            <div className="relative overflow-x-hidden">
               <FloatingControlsLibrary
                 items={tocItems}
                 visible={tocVisible}
                 side={tocSide}
                 onToggle={() => setTocVisible((prev) => !prev)}
                 onSelect={handleScrollTo}
-                onBulkUpdate={(ids, ignored) => {
-                  ids.forEach((id) => {
-                    ignoredRef.current.set(id, ignored);
-                  });
-                  scheduleTocUpdate();
-                }}
+                onBulkUpdate={onBulkUpdate}
               />
-              <div className="max-h-[80vh] space-y-8 overflow-y-auto pr-4">
+              <div className="max-h-[80vh] space-y-8 overflow-y-auto overflow-x-hidden pr-0 md:pr-4">
                 {pages.map(({ page, items }) => (
-                  <div key={page} className="relative mx-auto max-w-[720px] px-10 py-12">
+                  <div key={page} className="relative mx-auto max-w-[720px] px-2 py-12 sm:px-4 lg:px-10">
                     <div className="space-y-6">
                       {items.map((block) => (
                         <BlockPreview
