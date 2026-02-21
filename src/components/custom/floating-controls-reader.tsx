@@ -113,7 +113,7 @@ export function FloatingControlsReader({
         <Slider
           value={[wpm]}
           min={150}
-          max={600}
+          max={350}
           step={10}
           onValueChange={(values) => onWpmChange(values[0] ?? 150)}
         />

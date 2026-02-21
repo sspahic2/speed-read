@@ -38,6 +38,21 @@
   will-change: opacity, transform;
 }
 
+.reader-nav-shell {
+  transition-property: opacity, transform, filter;
+  transition-duration: 420ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform, filter;
+}
+
+body[data-reader-ui-dimmed="true"] .reader-nav-shell {
+  opacity: 0;
+  transform: translateY(-12px);
+  filter: blur(3px);
+  pointer-events: none;
+  transition-duration: 3000ms;
+}
+
 /* Mobile navigation sheet motion */
 .mobile-menu-sheet[data-state="open"] {
   animation: mobileSheetIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -108,6 +123,12 @@
 @media (prefers-reduced-motion: reduce) {
   .word-transition {
     animation: none;
+  }
+
+  .reader-nav-shell,
+  body[data-reader-ui-dimmed="true"] .reader-nav-shell {
+    filter: none;
+    transition-duration: 150ms;
   }
 
   .mobile-menu-sheet[data-state="open"],

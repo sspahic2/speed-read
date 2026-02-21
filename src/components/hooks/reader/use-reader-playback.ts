@@ -165,17 +165,6 @@ export function useReaderPlayback({
     setWordIndex,
   ]);
 
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.code !== "Space") return;
-      event.preventDefault();
-      setIsPlaying((playing) => !playing);
-    };
-
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, []);
-
   const beginSeek = useCallback(() => {
     seekInProgressRef.current = true;
   }, []);

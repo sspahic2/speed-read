@@ -7,6 +7,9 @@ import { useReaderDocument } from "@/components/hooks/reader/use-reader-document
 import { useReaderPlayback } from "@/components/hooks/reader/use-reader-playback";
 import { saveReaderProgress } from "@/services/frontend-services/library-service";
 
+const MIN_WPM = 150;
+const MAX_WPM = 350;
+
 export function useReaderState() {
   const [fontSize, setFontSize] = useState(32);
   const [wpm, setWpm] = useState(300);
@@ -144,7 +147,7 @@ export function useReaderState() {
   const onWpmChange = useCallback(
     (value: number) => {
       playback.setIsPlaying(false);
-      setWpm(value);
+      setWpm(Math.max(MIN_WPM, Math.min(MAX_WPM, value)));
     },
     [playback.setIsPlaying],
   );

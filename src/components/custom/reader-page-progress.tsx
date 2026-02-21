@@ -151,7 +151,7 @@ export function ReaderPageProgress({
     });
     const timeout = window.setTimeout(() => updateBottomFade(), 240);
     return () => window.clearTimeout(timeout);
-  }, [page, activeBlockId, updateBottomFade]);
+  }, [page, activeBlockId, activeWordOffset, updateBottomFade]);
 
   useEffect(() => {
     updateBottomFade();

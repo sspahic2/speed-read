@@ -37,7 +37,7 @@ export function NavBar() {
   const isLoading = status === "loading";
 
   return (
-    <header className="sticky top-0 z-40 px-4 pt-4">
+    <header className="reader-nav-shell sticky top-0 z-40 px-4 pt-4">
       <div className="mx-auto max-w-6xl">
         <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-background/75 px-4 py-3 shadow-[0_14px_40px_hsl(var(--background)/0.55)] backdrop-blur-xl md:px-5">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-linear-to-r from-transparent via-primary/60 to-transparent" />
@@ -103,7 +103,7 @@ export function NavBar() {
               </SheetTrigger>
               <SheetContent
                 side="right"
-                className="mobile-menu-sheet w-screen border-border/70 bg-card/95 px-5 pt-10 backdrop-blur-xl sm:max-w-sm [&>button]:fixed [&>button]:top-7.5 [&>button]:right-8 [&>button]:z-60 [&>button]:inline-flex [&>button]:size-8 [&>button]:items-center [&>button]:justify-center [&>button]:rounded-md [&>button]:border [&>button]:border-border/70 [&>button]:bg-background/90 [&>button]:opacity-100 [&>button]:shadow-xs [&>button]:backdrop-blur-sm"
+                className="mobile-menu-sheet h-dvh max-h-dvh w-screen overflow-y-auto overscroll-contain border-border/70 bg-card/95 px-5 pt-10 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur-xl sm:max-w-sm [&>button]:fixed [&>button]:top-7.5 [&>button]:right-8 [&>button]:z-60 [&>button]:inline-flex [&>button]:size-8 [&>button]:items-center [&>button]:justify-center [&>button]:rounded-md [&>button]:border [&>button]:border-border/70 [&>button]:bg-background/90 [&>button]:opacity-100 [&>button]:shadow-xs [&>button]:backdrop-blur-sm"
               >
                 <SheetHeader className="px-0">
                   <SheetTitle className="text-left">Hi {userLabel}</SheetTitle>
@@ -169,4 +169,3 @@ export function NavBar() {
     </header>
   );
 }
-
