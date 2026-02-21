@@ -87,6 +87,15 @@ export default function HomePage() {
             </CardFooter>
           </Card>
         </section>
+
+        <footer className="mt-2 border-t border-border/70 pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+            <p>&copy; 2026 Speed Reader</p>
+            <Link className="underline decoration-muted-foreground/50 underline-offset-4" href="/terms-and-conditions">
+              Terms & Conditions
+            </Link>
+          </div>
+        </footer>
       </div>
     </main>
   );

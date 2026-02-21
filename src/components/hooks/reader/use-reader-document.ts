@@ -62,8 +62,14 @@ type UseReaderDocumentReturn = {
   handleLibraryLoad: (payload: LibraryLoadPayload) => void;
 };
 
-export function useReaderDocument(): UseReaderDocumentReturn {
-  const [blocks, setBlocks] = useState<LibraryBlock[]>(DEFAULT_SAMPLE_BLOCKS);
+type UseReaderDocumentOptions = {
+  initialBlocks?: LibraryBlock[];
+};
+
+export function useReaderDocument({
+  initialBlocks = DEFAULT_SAMPLE_BLOCKS,
+}: UseReaderDocumentOptions = {}): UseReaderDocumentReturn {
+  const [blocks, setBlocks] = useState<LibraryBlock[]>(() => initialBlocks);
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [wordIndex, setWordIndex] = useState(0);
   const [currentFileId, setCurrentFileId] = useState<string | null>(null);

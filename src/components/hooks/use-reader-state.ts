@@ -5,18 +5,23 @@ import { useFloatingControls } from "@/components/hooks/use-floating-controls";
 import { useLibraryLoader } from "@/components/hooks/use-library-loader";
 import { useReaderDocument } from "@/components/hooks/reader/use-reader-document";
 import { useReaderPlayback } from "@/components/hooks/reader/use-reader-playback";
+import type { LibraryBlock } from "@/services/frontend-services/library-service";
 import { saveReaderProgress } from "@/services/frontend-services/library-service";
 
 const MIN_WPM = 150;
 const MAX_WPM = 350;
 
-export function useReaderState() {
+type UseReaderStateOptions = {
+  initialBlocks?: LibraryBlock[];
+};
+
+export function useReaderState({ initialBlocks }: UseReaderStateOptions = {}) {
   const [fontSize, setFontSize] = useState(32);
   const [wpm, setWpm] = useState(300);
   const [rampSeconds, setRampSeconds] = useState(3);
 
   const { isVisible, setIsVisible, side } = useFloatingControls();
-  const readerDocument = useReaderDocument();
+  const readerDocument = useReaderDocument({ initialBlocks });
 
   const saveProgress = useCallback(
     (blockId: string, offset: number) => {
