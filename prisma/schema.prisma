@@ -1,7 +1,8 @@
 generator client {
   provider = "prisma-client"
   output   = "./generated"
-  runtime  = "vercel-edge"
+  engineType = "client"
+  runtime    = "nodejs"
 
   generatedFileExtension = "ts"
   importFileExtension    = "ts"
@@ -40,8 +41,79 @@ model Account {
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billing Billing?
+  billingWebhookEvents BillingWebhookEvent[]
 
   @@unique([provider, providerAccountId])
+}
+
+enum BillingPlanInterval {
+  month
+  year
+  unknown
+}
+
+enum BillingPaymentStatus {
+  failed
+  success
+  recovered
+  refunded
+}
+
+model Billing {
+  id                     String               @id @default(cuid())
+  accountId              String               @unique
+  lemonSubscriptionId    String               @unique
+  lemonCustomerId        String?
+  status                 String
+  entitlementActive      Boolean              @default(false)
+  productId              String?
+  variantId              String?
+  planInterval           BillingPlanInterval  @default(unknown)
+  isPaused               Boolean              @default(false)
+  pauseMode              String?
+  pauseResumesAt         DateTime?
+  renewsAt               DateTime?
+  endsAt                 DateTime?
+  trialEndsAt            DateTime?
+  customerPortalUrl      String?
+  updatePaymentMethodUrl String?
+  updateSubscriptionUrl  String?
+  lastPaymentStatus      BillingPaymentStatus?
+  lastPaymentAt          DateTime?
+  lastEventName          String?
+  lastEventAt            DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  account       Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  webhookEvents BillingWebhookEvent[]
+
+  @@index([status])
+  @@index([entitlementActive])
+  @@index([variantId])
+}
+
+model BillingWebhookEvent {
+  id             String   @id @default(cuid())
+  idempotencyKey String   @unique
+  accountId      String?
+  billingId      String?
+  eventName      String
+  resourceType   String
+  resourceId     String
+  subscriptionId String?
+  invoiceId      String?
+  status         String?
+  rawBody        String   @db.Text
+  processedAt    DateTime @default(now())
+
+  account Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  billing Billing? @relation(fields: [billingId], references: [id], onDelete: SetNull)
+
+  @@index([subscriptionId])
+  @@index([accountId])
+  @@index([eventName, resourceId])
 }
 
 model VerificationToken {

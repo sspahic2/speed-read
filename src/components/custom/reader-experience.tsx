@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback } from "react";
 import type { CSSProperties } from "react";
 import { FloatingControlsReader } from "@/components/custom/floating-controls-reader";
@@ -12,6 +13,7 @@ import { useReaderViewport } from "@/components/hooks/use-mobile";
 import { cn } from "@/components/lib/utils";
 import { computeMobileWordFontSize, splitWordAtPivot } from "@/lib/reader-utils";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Pause, Play } from "lucide-react";
 import { useReaderState } from "@/components/hooks/use-reader-state";
@@ -29,6 +31,7 @@ type HighlightedWordProps = {
 
 type ReaderExperienceProps = {
   initialBlocks?: LibraryBlock[];
+  isSubscribed?: boolean;
 };
 
 function HighlightedWord({ word, className, style, highlightPivot = true }: HighlightedWordProps) {
@@ -51,8 +54,8 @@ function HighlightedWord({ word, className, style, highlightPivot = true }: High
   );
 }
 
-export function ReaderExperience({ initialBlocks }: ReaderExperienceProps) {
-  const { status } = useSession();
+export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscribed = false }: ReaderExperienceProps) {
+  const { data: session, status } = useSession();
   const {
     isPhone,
     isPortraitPhone,
@@ -86,6 +89,7 @@ export function ReaderExperience({ initialBlocks }: ReaderExperienceProps) {
   const contextWordFontSize = Math.max(fontSize * 0.55, 14);
   const currentWordFontSize = isPhone ? computeMobileWordFontSize(fontSize, currentWord) : fontSize;
   const useSplitDrawerLayout = isLandscapePhone || isPortraitTablet;
+  const hasSubscriptionAccess = Boolean(session?.user?.isSubscribed) || initialIsSubscribed;
   const handleCountdownComplete = useCallback(() => {
     setIsPlaying(true);
   }, [setIsPlaying]);
@@ -130,6 +134,29 @@ export function ReaderExperience({ initialBlocks }: ReaderExperienceProps) {
     if (isCountdownActive) cancelCountdown();
     seekWithinPage(value);
   };
+
+  if (status === "authenticated" && !hasSubscriptionAccess) {
+    return (
+      <div className="bg-background text-foreground">
+        <main className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-3xl items-center justify-center px-6 py-10">
+          <Card className="w-full border-border/70 bg-card/80">
+            <CardHeader>
+              <CardTitle>Reader access requires an active subscription.</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <p>
+                Your session is authenticated, but the billing entitlement flag is currently off. Open the
+                pricing page to start or manage your plan.
+              </p>
+              <Button asChild>
+                <Link href="/pricing">View pricing</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden bg-background text-foreground">
