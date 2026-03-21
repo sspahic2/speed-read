@@ -10,6 +10,12 @@ export type SubscriptionState = {
   customerPortalUrl: string | null;
 };
 
+export type BillingPortalUrls = {
+  customerPortalUrl: string | null;
+  updatePaymentMethodUrl: string | null;
+  updateSubscriptionUrl: string | null;
+};
+
 export type BillingCatalogVariant = {
   variantId: string;
   variantName: string;
@@ -36,6 +42,56 @@ export type PublishedBillingCatalog = {
 
 export type BillingStatusResponse = SubscriptionState & {
   checkoutEnabled: boolean;
+};
+
+export type BillingDashboardSummary = SubscriptionState &
+  BillingPortalUrls & {
+    hasBillingRecord: boolean;
+    lemonSubscriptionId: string | null;
+    lemonCustomerId: string | null;
+    productId: string | null;
+    productName: string | null;
+    variantName: string | null;
+    planLabel: string;
+    statusLabel: string;
+    entitlementLabel: string;
+    storeBillingUrl: string | null;
+    isPaused: boolean;
+    pauseMode: string | null;
+    pauseResumesAt: string | null;
+    renewsAt: string | null;
+    endsAt: string | null;
+    trialEndsAt: string | null;
+    lastPaymentStatus: BillingPaymentStatus | null;
+    lastPaymentStatusLabel: string | null;
+    lastPaymentAt: string | null;
+    lastEventName: string | null;
+    lastEventAt: string | null;
+  };
+
+export type BillingInvoice = {
+  id: string;
+  subscriptionId: string | null;
+  orderId: string | null;
+  number: string | null;
+  createdAt: string | null;
+  billingReason: string | null;
+  billingReasonLabel: string;
+  status: string | null;
+  statusLabel: string;
+  totalFormatted: string | null;
+  refunded: boolean;
+  refundedAmountFormatted: string | null;
+  invoiceUrl: string | null;
+};
+
+export type BillingInvoicesResponse = {
+  invoices: BillingInvoice[];
+};
+
+export type BillingPortalResponse = BillingPortalUrls & {
+  fresh: boolean;
+  fallback: boolean;
 };
 
 export type LemonWebhookPayload = {

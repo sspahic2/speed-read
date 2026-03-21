@@ -50,6 +50,48 @@ export type LemonVariantResource = {
   };
 };
 
+export type LemonSubscriptionResource = {
+  id: string;
+  type: "subscriptions";
+  attributes: {
+    store_id: number;
+    customer_id?: number | null;
+    order_id?: number | null;
+    product_id?: number | null;
+    variant_id?: number | null;
+    product_name?: string | null;
+    variant_name?: string | null;
+    status: string;
+    test_mode: boolean;
+    renews_at?: string | null;
+    ends_at?: string | null;
+    trial_ends_at?: string | null;
+    urls?: Record<string, unknown> | null;
+  };
+};
+
+export type LemonSubscriptionInvoiceResource = {
+  id: string;
+  type: "subscription-invoices";
+  attributes: {
+    subscription_id?: number | null;
+    order_id?: number | null;
+    number?: string | null;
+    billing_reason?: string | null;
+    currency?: string | null;
+    status?: string | null;
+    status_formatted?: string | null;
+    refunded?: boolean | null;
+    refunded_amount?: number | null;
+    refunded_amount_formatted?: string | null;
+    total?: number | null;
+    total_formatted?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+    urls?: Record<string, unknown> | null;
+  };
+};
+
 function getRequiredEnv(name: string, fallbacks: string[] = []) {
   const candidateNames = [name, ...fallbacks];
 
@@ -149,5 +191,19 @@ export async function listLemonProductsForStore(storeId = getLemonStoreId()) {
 export async function listLemonVariantsForProduct(productId: string) {
   return listJsonApiResources<LemonVariantResource>(
     `/variants?filter[product_id]=${encodeURIComponent(productId)}&page[size]=100`,
+  );
+}
+
+export async function getLemonSubscription(subscriptionId: string) {
+  const response = await lemonsqueezyRequest<JsonApiDocumentResponse<LemonSubscriptionResource>>(
+    `/subscriptions/${encodeURIComponent(subscriptionId)}`,
+  );
+
+  return response.data;
+}
+
+export async function listLemonSubscriptionInvoices(subscriptionId: string) {
+  return listJsonApiResources<LemonSubscriptionInvoiceResource>(
+    `/subscriptions/${encodeURIComponent(subscriptionId)}/subscription-invoices?page[size]=100`,
   );
 }

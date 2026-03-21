@@ -19,6 +19,7 @@ import {
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/billing", label: "Billing" },
   { href: "/reader", label: "Reader" },
   { href: "/library", label: "Library" },
 ];

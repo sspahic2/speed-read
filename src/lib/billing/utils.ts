@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { BillingPlanInterval } from "@/lib/billing/types";
+import type { BillingPlanInterval, BillingPortalUrls } from "@/lib/billing/types";
 
 const DIRECT_ACCESS_STATUSES = new Set(["active", "on_trial", "trialing"]);
 const PERIOD_END_ACCESS_STATUSES = new Set(["cancelled", "paused", "past_due"]);
@@ -80,4 +80,25 @@ export function createWebhookIdempotencyKey(rawBody: string) {
 
 export function stripTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
+}
+
+export function normalizePortalUrls(value: unknown): BillingPortalUrls {
+  if (!value || typeof value !== "object") {
+    return {
+      customerPortalUrl: null,
+      updatePaymentMethodUrl: null,
+      updateSubscriptionUrl: null,
+    };
+  }
+
+  const urls = value as Record<string, unknown>;
+
+  return {
+    customerPortalUrl: coerceString(urls.customer_portal),
+    updatePaymentMethodUrl: coerceString(urls.update_payment_method),
+    updateSubscriptionUrl:
+      coerceString(urls.update_subscription) ??
+      coerceString(urls.update_customer_portal) ??
+      coerceString(urls.customer_portal_update_subscription),
+  };
 }

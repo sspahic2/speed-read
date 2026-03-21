@@ -13,6 +13,7 @@ import {
   coerceString,
   computeEntitlementActive,
   normalizePlanInterval,
+  normalizePortalUrls,
   parseOptionalDate,
 } from "@/lib/billing/utils";
 
@@ -53,21 +54,7 @@ function resolvePauseMetadata(value: unknown) {
 }
 
 function resolvePortalUrls(value: unknown) {
-  if (!value || typeof value !== "object") {
-    return {
-      customerPortalUrl: null,
-      updatePaymentMethodUrl: null,
-      updateSubscriptionUrl: null,
-    };
-  }
-
-  const urls = value as Record<string, unknown>;
-
-  return {
-    customerPortalUrl: coerceString(urls.customer_portal),
-    updatePaymentMethodUrl: coerceString(urls.update_payment_method),
-    updateSubscriptionUrl: coerceString(urls.update_subscription),
-  };
+  return normalizePortalUrls(value);
 }
 
 async function getPreferredAccountForUserIdWithClient(

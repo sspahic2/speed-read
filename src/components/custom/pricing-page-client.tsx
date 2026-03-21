@@ -104,8 +104,6 @@ export function PricingPageClient() {
   const currentPlanInterval = billingStatus?.planInterval ?? session?.user?.planInterval ?? "unknown";
   const monthlyPlan = findPlan(catalog, "month");
   const yearlyPlan = findPlan(catalog, "year");
-  const storeBillingUrl = catalog ? `${catalog.storeUrl}/billing` : "/pricing";
-  const manageBillingUrl = billingStatus?.customerPortalUrl ?? storeBillingUrl;
 
   async function handleCheckout(variantId: string) {
     setCheckoutVariantId(variantId);
@@ -158,7 +156,7 @@ export function PricingPageClient() {
             {isAuthenticated ? (
               <div className="flex flex-col items-start gap-3 rounded-2xl border border-border/60 bg-background/70 px-4 py-4 text-sm">
                 <Badge variant={isSubscribed ? "default" : "secondary"}>
-                  {isSubscribed ? `Subscribed · ${currentPlanInterval}` : "Not subscribed"}
+                  {isSubscribed ? `Subscribed - ${currentPlanInterval}` : "Not subscribed"}
                 </Badge>
                 <p className="text-muted-foreground">
                   {isSubscribed
@@ -167,9 +165,7 @@ export function PricingPageClient() {
                 </p>
                 {isSubscribed ? (
                   <Button asChild variant="outline">
-                    <a href={manageBillingUrl} target="_blank" rel="noreferrer">
-                      Manage Billing
-                    </a>
+                    <Link href="/billing">Open Billing</Link>
                   </Button>
                 ) : null}
               </div>
