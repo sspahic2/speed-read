@@ -37,6 +37,11 @@ export function NavBar() {
   const userLabel = session?.user?.name || session?.user?.email || "Signed in";
   const isAuthenticated = status === "authenticated";
   const isLoading = status === "loading";
+  const isSubscribed = session?.user?.isSubscribed === true;
+
+  const visibleLinks = LINKS.filter(
+    (link) => link.href !== "/billing" || isSubscribed,
+  );
 
   return (
     <header className="reader-nav-shell sticky top-0 z-40 px-4 pt-4">
@@ -55,7 +60,7 @@ export function NavBar() {
             </Link>
 
             <nav className="hidden items-center rounded-full border border-border/70 bg-muted/35 p-1 md:flex">
-              {LINKS.map((link) => {
+              {visibleLinks.map((link) => {
                 const active = isActiveRoute(pathname, link.href);
                 return (
                   <Link
@@ -112,7 +117,7 @@ export function NavBar() {
                 </SheetHeader>
 
                 <div className="mt-4 flex flex-col gap-2">
-                  {LINKS.map((link) => {
+                  {visibleLinks.map((link) => {
                     const active = isActiveRoute(pathname, link.href);
                     return (
                       <Link

@@ -67,7 +67,7 @@ export async function POST(request: Request) {
             },
             product_options: {
               enabled_variants: selectedCatalogVariant.catalog.enabledVariantIds,
-              redirect_url: `${appUrl}/pricing?checkout=success`,
+              redirect_url: `${appUrl}/library?checkout=success`,
               receipt_button_text: "Manage billing",
               receipt_link_url: `${selectedCatalogVariant.catalog.storeUrl}/billing`,
             },

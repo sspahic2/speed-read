@@ -163,6 +163,10 @@ export default async function BillingPage() {
     redirect("/login");
   }
 
+  if (!session.user.isSubscribed) {
+    redirect("/pricing");
+  }
+
   const { summary, invoices, invoiceError } = await getBillingDashboardPageDataForUser(session.user.id);
   const userLabel = session.user.name ?? session.user.email ?? "your account";
 

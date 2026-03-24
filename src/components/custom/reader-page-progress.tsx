@@ -93,7 +93,7 @@ const ProgressBlock = memo(function ProgressBlock({
                 className={cn(
                   "rounded-md px-1 py-0.5 transition-colors duration-200",
                   isActiveWord
-                    ? "bg-highlight text-background shadow-[0_0_0_1px_hsl(var(--primary)/0.35),0_12px_30px_hsl(var(--primary)/0.12)]"
+                    ? "bg-highlight text-background shadow-[0_8px_24px_hsl(var(--highlight)/0.25),0_0_60px_hsl(var(--highlight)/0.08)]"
                     : "text-inherit",
                 )}
               >
@@ -165,7 +165,8 @@ export function ReaderPageProgress({
       aria-label={`Reading progress on page ${page}`}
       className={cn("relative overflow-hidden", className)}
     >
-      <div className="pointer-events-none absolute inset-0" />
+      <div className="pointer-events-none absolute inset-0 backdrop-blur-[1px]" />
+      <div className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 h-[60%] w-[70%] rounded-full bg-primary/[0.04] blur-3xl" />
 
       <div
         ref={scrollContainerRef}
@@ -190,9 +191,10 @@ export function ReaderPageProgress({
         )}
       </div>
 
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-background/60 to-transparent" />
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-background via-background/65 to-transparent backdrop-blur-sm transition-opacity duration-200",
+          "pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background via-background/60 to-transparent backdrop-blur-sm transition-opacity duration-300",
           showBottomFade ? "opacity-100" : "opacity-0",
         )}
       />
