@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { createLogger } from "@/lib/logger";
 import { getSubscriptionStateForUser } from "@/lib/billing/subscription-state";
 import {
+  deleteLibraryFile,
   getReaderProgress,
   getUserLibraryFiles,
+  renameLibraryFile,
 } from "@/services/backend-services/library-service";
 import { downloadJsonFromBlob } from "@/services/backend-services/blob-service";
+
+const log = createLogger("api.library");
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,6 +69,54 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, progress, blocks });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Load failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { fileId, fileName } = body ?? {};
+
+    if (!fileId || !fileName?.trim()) {
+      return NextResponse.json({ error: "fileId and fileName are required" }, { status: 400 });
+    }
+
+    await renameLibraryFile(session.user.id, fileId, fileName);
+    log.info("Library file renamed", { userId: session.user.id, fileId, fileName });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Rename failed";
+    log.error("Library rename failed", { userId: session.user.id, error: message });
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { fileId } = body ?? {};
+
+    if (!fileId) {
+      return NextResponse.json({ error: "fileId is required" }, { status: 400 });
+    }
+
+    await deleteLibraryFile(session.user.id, fileId);
+    log.info("Library file deleted", { userId: session.user.id, fileId });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Delete failed";
+    log.error("Library delete failed", { userId: session.user.id, error: message });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

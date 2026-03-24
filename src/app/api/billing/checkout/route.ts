@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { createLogger } from "@/lib/logger";
 import { BillingConfigurationError, BillingError } from "@/lib/billing/errors";
 import { getAppUrl, lemonsqueezyRequest } from "@/lib/billing/lemonsqueezy-client";
 import { resolveCatalogVariant } from "@/lib/billing/lemonsqueezy-catalog";
 import { getAccountForUserId } from "@/lib/billing/subscription-state";
 import { stripTrailingSlash } from "@/lib/billing/utils";
+
+const log = createLogger("api.billing.checkout");
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -90,16 +93,27 @@ export async function POST(request: Request) {
 
     const checkoutUrl = response.data?.attributes?.url;
     if (!checkoutUrl) {
+      log.error("Lemon Squeezy returned no checkout URL", { userId: session.user.id });
       throw new BillingConfigurationError("Lemon Squeezy did not return a checkout URL.", 502);
     }
 
+    log.info("Checkout session created", {
+      userId: session.user.id,
+      variantId: selectedCatalogVariant.variant.variantId,
+    });
     return NextResponse.json({ checkoutUrl });
   } catch (error) {
     if (error instanceof BillingError) {
+      log.error("Checkout creation failed", {
+        userId: session.user.id,
+        error: error.message,
+        statusCode: error.statusCode,
+      });
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
 
     const message = error instanceof Error ? error.message : "Failed to create checkout.";
+    log.error("Unexpected checkout failure", { userId: session.user.id, error: message });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,35 +1,47 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
+import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import type {
   BillingCatalogVariant,
   BillingStatusResponse,
   PublishedBillingCatalog,
 } from "@/lib/billing/types";
 
-function findPlan(catalog: PublishedBillingCatalog | null, interval: BillingCatalogVariant["interval"]) {
-  return catalog?.variants.find((variant) => variant.interval === interval) ?? null;
-}
-
-function describePlan(variant: BillingCatalogVariant | null) {
-  if (!variant) {
-    return "Currently unavailable";
+function formatInterval(interval: BillingCatalogVariant["interval"]) {
+  switch (interval) {
+    case "month":
+      return "/ month";
+    case "year":
+      return "/ year";
+    default:
+      return "";
   }
-
-  return variant.interval === "year" ? "Best value for regular use" : "Flexible monthly access";
 }
+
+function formatTrial(variant: BillingCatalogVariant) {
+  if (!variant.hasFreeTrial || !variant.trialIntervalCount) return null;
+  const unit = variant.trialInterval ?? "day";
+  const count = variant.trialIntervalCount;
+  return `${count} ${unit}${count > 1 ? "s" : ""} free trial`;
+}
+
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, "").trim();
+}
+
+const FEATURES = [
+  "Unlimited PDF & EPUB uploads",
+  "RSVP speed reading engine",
+  "Reading progress sync",
+  "Full library management",
+];
 
 export function PricingPageClient() {
   const { data: session, status: sessionStatus } = useSession();
@@ -62,9 +74,7 @@ export function PricingPageClient() {
         }
 
         const nextCatalog = (await catalogResponse.json()) as PublishedBillingCatalog;
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         setCatalog(nextCatalog);
 
@@ -75,9 +85,7 @@ export function PricingPageClient() {
           }
 
           const nextStatus = (await statusResponse.json()) as BillingStatusResponse;
-          if (!cancelled) {
-            setBillingStatus(nextStatus);
-          }
+          if (!cancelled) setBillingStatus(nextStatus);
         } else {
           setBillingStatus(null);
         }
@@ -86,24 +94,20 @@ export function PricingPageClient() {
           setError(loadError instanceof Error ? loadError.message : "Unable to load billing data.");
         }
       } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+        if (!cancelled) setIsLoading(false);
       }
     }
 
     void loadBillingContext();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [sessionStatus]);
 
   const isAuthenticated = sessionStatus === "authenticated";
   const isSubscribed = billingStatus?.isSubscribed ?? Boolean(session?.user?.isSubscribed);
-  const currentPlanInterval = billingStatus?.planInterval ?? session?.user?.planInterval ?? "unknown";
-  const monthlyPlan = findPlan(catalog, "month");
-  const yearlyPlan = findPlan(catalog, "year");
+  const currentVariantId = billingStatus?.variantId ?? null;
+  const variants = catalog?.variants ?? [];
+  const productName = catalog?.productName ?? null;
+  const productImageUrl = catalog?.productImageUrl ?? null;
 
   async function handleCheckout(variantId: string) {
     setCheckoutVariantId(variantId);
@@ -112,9 +116,7 @@ export function PricingPageClient() {
     try {
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ variantId }),
       });
 
@@ -136,168 +138,219 @@ export function PricingPageClient() {
   }
 
   return (
-    <main className="bg-linear-to-b from-background via-background/70 to-background">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10">
-        <section className="rounded-2xl border border-border/70 bg-card/80 px-6 py-10 shadow-sm">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-4">
-              <Badge variant="outline" className="rounded-md px-3 py-1 text-xs uppercase tracking-[0.2em]">
-                Pricing
-              </Badge>
-              <div className="space-y-3">
-                <h1 className="text-3xl font-semibold tracking-tight">Unlock the full reader workflow.</h1>
-                <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
-                  Checkout prices come directly from your published Lemon Squeezy catalog. Pick a plan,
-                  keep the other option visible in checkout, and let the webhook state drive reader access.
-                </p>
-              </div>
-            </div>
+    <main className="min-h-dvh bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(to_bottom,hsl(var(--background)),hsl(var(--background)/0.78),hsl(var(--background)))]">
+      <div className="mx-auto flex max-w-5xl flex-col px-4 py-10 sm:px-6 md:py-20">
 
-            {isAuthenticated ? (
-              <div className="flex flex-col items-start gap-3 rounded-2xl border border-border/60 bg-background/70 px-4 py-4 text-sm">
-                <Badge variant={isSubscribed ? "default" : "secondary"}>
-                  {isSubscribed ? `Subscribed - ${currentPlanInterval}` : "Not subscribed"}
-                </Badge>
-                <p className="text-muted-foreground">
-                  {isSubscribed
-                    ? "Your account has reader access enabled."
-                    : "Start a plan to enable uploads, billing sync, and reader access."}
-                </p>
-                {isSubscribed ? (
-                  <Button asChild variant="outline">
-                    <Link href="/billing">Open Billing</Link>
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </section>
+        {/* Hero */}
+        <section className="flex flex-col items-center gap-5 text-center sm:gap-6">
+          <Badge variant="outline" className="rounded-full px-4 py-1.5 text-[0.65rem] uppercase tracking-[0.2em] sm:text-xs">
+            Pricing
+          </Badge>
 
-        {error ? (
-          <Card className="border-destructive/40 bg-destructive/5">
-            <CardContent className="px-6 py-4 text-sm text-destructive">{error}</CardContent>
-          </Card>
-        ) : null}
+          <h1 className="max-w-lg text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+            Read faster. Retain more.
+          </h1>
 
-        <section className="grid gap-6 md:grid-cols-2">
-          <PlanCard
-            title="Monthly"
-            variant={monthlyPlan}
-            isLoading={isLoading}
-            isAuthenticated={isAuthenticated}
-            isSubscribed={isSubscribed}
-            isCurrentPlan={currentPlanInterval === "month"}
-            isSubmitting={checkoutVariantId === monthlyPlan?.variantId}
-            onCheckout={handleCheckout}
-          />
-          <PlanCard
-            title="Yearly"
-            variant={yearlyPlan}
-            isLoading={isLoading}
-            isAuthenticated={isAuthenticated}
-            isSubscribed={isSubscribed}
-            isCurrentPlan={currentPlanInterval === "year"}
-            isSubmitting={checkoutVariantId === yearlyPlan?.variantId}
-            onCheckout={handleCheckout}
-          />
-        </section>
-
-        {!isAuthenticated ? (
-          <Card className="border-border/70 bg-card/80">
-            <CardHeader>
-              <CardTitle>Need an account first?</CardTitle>
-              <CardDescription>
-                Sign in with Google so checkout can link the purchase to your account and webhook updates can
-                flow back into the app.
-              </CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button onClick={() => signIn("google", { callbackUrl: "/pricing" })}>Continue with Google</Button>
-            </CardFooter>
-          </Card>
-        ) : null}
-
-        <footer className="border-t border-border/70 pt-6 text-sm text-muted-foreground">
-          <p>
-            Reader access is enforced by the billing entitlement flag. If your subscription changes, the
-            next webhook update becomes the source of truth for this page and the reader gate.
+          <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:max-w-xl sm:text-base md:text-lg">
+            Pick a plan to unlock the full speed reading experience.
           </p>
-        </footer>
+
+          {isSubscribed ? (
+            <div className="flex items-center gap-2.5 rounded-full border border-primary/30 bg-primary/5 px-4 py-2 sm:px-5 sm:py-2.5">
+              <Check className="size-3.5 text-primary sm:size-4" />
+              <span className="text-xs font-medium sm:text-sm">You&apos;re subscribed</span>
+              <Button asChild variant="ghost" size="sm" className="h-auto px-2 py-0.5 text-xs sm:text-sm">
+                <Link href="/billing">Manage</Link>
+              </Button>
+            </div>
+          ) : null}
+        </section>
+
+        {/* Product image */}
+        {productImageUrl ? (
+          <div className="relative mx-auto mt-10 aspect-[3/2] w-full max-w-2xl overflow-hidden rounded-2xl border border-border/60 shadow-lg sm:mt-14 sm:rounded-3xl">
+            <Image
+              src={productImageUrl}
+              alt={productName ?? "Product"}
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) calc(100vw - 2rem), 672px"
+              priority
+            />
+          </div>
+        ) : null}
+
+        {/* Error */}
+        {error ? (
+          <div className="mt-10 rounded-xl border border-destructive/40 bg-destructive/5 px-5 py-3.5 text-center text-sm text-destructive sm:rounded-2xl sm:px-6 sm:py-4">
+            {error}
+          </div>
+        ) : null}
+
+        {/* Plans */}
+        <section className="mt-12 sm:mt-16">
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-3 py-16 text-muted-foreground sm:py-20">
+              <Loader2 className="size-5 animate-spin" />
+              <span className="text-sm">Loading plans...</span>
+            </div>
+          ) : variants.length === 0 ? (
+            <p className="py-16 text-center text-sm text-muted-foreground sm:py-20">
+              No plans are currently published.
+            </p>
+          ) : (
+            <div
+              className={`mx-auto grid gap-5 sm:gap-6 ${
+                variants.length === 1
+                  ? "max-w-sm sm:max-w-md"
+                  : variants.length === 2
+                    ? "max-w-3xl sm:grid-cols-2"
+                    : "sm:grid-cols-2 lg:grid-cols-3"
+              }`}
+            >
+              {variants.map((variant, index) => (
+                <PlanCard
+                  key={variant.variantId}
+                  variant={variant}
+                  highlight={variants.length > 1 && index === variants.length - 1}
+                  isAuthenticated={isAuthenticated}
+                  isSubscribed={isSubscribed}
+                  isCurrentPlan={currentVariantId === variant.variantId}
+                  isSubmitting={checkoutVariantId === variant.variantId}
+                  anySubmitting={checkoutVariantId !== null}
+                  onCheckout={handleCheckout}
+                  onSignIn={() => signIn("google", { callbackUrl: "/pricing" })}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Sign-in prompt */}
+        {!isAuthenticated && !isLoading ? (
+          <section className="mt-12 flex flex-col items-center gap-3 text-center sm:mt-16 sm:gap-4">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Sign in with Google to get started.
+            </p>
+            <Button
+              size="lg"
+              variant="outline"
+              className="rounded-full px-6 text-sm sm:px-8"
+              onClick={() => signIn("google", { callbackUrl: "/pricing" })}
+            >
+              Continue with Google
+              <ArrowRight className="size-4" />
+            </Button>
+          </section>
+        ) : null}
       </div>
     </main>
   );
 }
 
 type PlanCardProps = {
-  title: string;
-  variant: BillingCatalogVariant | null;
-  isLoading: boolean;
+  variant: BillingCatalogVariant;
+  highlight: boolean;
   isAuthenticated: boolean;
   isSubscribed: boolean;
   isCurrentPlan: boolean;
   isSubmitting: boolean;
+  anySubmitting: boolean;
   onCheckout: (variantId: string) => void;
+  onSignIn: () => void;
 };
 
 function PlanCard(props: PlanCardProps) {
-  const buttonDisabled = props.isLoading || !props.variant || props.isSubscribed || props.isSubmitting;
+  const { variant, highlight } = props;
+  const trial = formatTrial(variant);
+  const description = variant.description ? stripHtml(variant.description) : null;
 
   return (
-    <Card className="border-border/70 bg-card/80">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle>{props.title}</CardTitle>
-            <CardDescription>{describePlan(props.variant)}</CardDescription>
-          </div>
-          {props.isCurrentPlan ? <Badge>Current plan</Badge> : null}
+    <div
+      className={`relative flex flex-col overflow-hidden rounded-2xl border bg-card/80 shadow-sm transition-shadow hover:shadow-md sm:rounded-3xl ${
+        highlight
+          ? "border-primary/50 ring-1 ring-primary/20"
+          : "border-border/70"
+      }`}
+    >
+      {highlight ? (
+        <div className="flex items-center justify-center gap-1.5 bg-primary py-1.5 text-[0.65rem] font-medium uppercase tracking-widest text-primary-foreground sm:py-2 sm:text-xs">
+          <Sparkles className="size-3 sm:size-3.5" />
+          Best value
         </div>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {props.isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading plan details...</p>
-        ) : props.variant ? (
-          <>
-            <div>
-              <p className="text-3xl font-semibold tracking-tight">{props.variant.priceFormatted}</p>
-              <p className="text-sm text-muted-foreground">
-                {props.variant.interval === "year" ? "per year" : "per month"}
-              </p>
-            </div>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>Published Lemon Squeezy variant: {props.variant.variantName}</p>
-              <p>Checkout preselects this option while leaving the other published variant available.</p>
-            </div>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">This plan is not currently published in Lemon Squeezy.</p>
-        )}
-      </CardContent>
-      <CardFooter>
-        {props.isAuthenticated ? (
-          <Button
-            className="w-full"
-            disabled={buttonDisabled}
-            onClick={() => {
-              if (props.variant) {
-                void props.onCheckout(props.variant.variantId);
-              }
-            }}
-          >
-            {props.isSubscribed
-              ? props.isCurrentPlan
-                ? "Current plan"
-                : "Subscribed"
-              : props.isSubmitting
-                ? "Redirecting..."
-                : `Choose ${props.title}`}
-          </Button>
-        ) : (
-          <Button className="w-full" asChild>
-            <Link href="/login">Log in to continue</Link>
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
+      ) : null}
+
+      <div className="flex flex-1 flex-col px-5 py-6 sm:px-7 sm:py-8">
+        {/* Header */}
+        <div className="space-y-1.5 sm:space-y-2">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold sm:text-lg">{variant.variantName}</h3>
+            {props.isCurrentPlan ? (
+              <Badge variant="secondary" className="text-[0.6rem] sm:text-[0.65rem]">Current</Badge>
+            ) : null}
+          </div>
+          {description ? (
+            <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">{description}</p>
+          ) : null}
+        </div>
+
+        {/* Price */}
+        <div className="mt-5 flex items-baseline gap-1 sm:mt-6 sm:gap-1.5">
+          <span className="text-3xl font-bold tracking-tight sm:text-4xl">{variant.priceFormatted}</span>
+          <span className="text-xs text-muted-foreground sm:text-sm">{formatInterval(variant.interval)}</span>
+        </div>
+
+        {trial ? (
+          <p className="mt-1.5 text-xs font-medium text-primary sm:mt-2 sm:text-sm">{trial} included</p>
+        ) : null}
+
+        <Separator className="my-5 sm:my-6" />
+
+        {/* Features */}
+        <ul className="flex-1 space-y-2.5 sm:space-y-3">
+          {FEATURES.map((feature) => (
+            <li key={feature} className="flex items-start gap-2 text-xs sm:gap-2.5 sm:text-sm">
+              <Check className="mt-0.5 size-3.5 shrink-0 text-primary sm:size-4" />
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* CTA */}
+        <div className="mt-6 sm:mt-8">
+          {props.isAuthenticated ? (
+            <Button
+              className="w-full rounded-xl py-4 text-sm sm:py-5"
+              variant={highlight ? "default" : "outline"}
+              disabled={props.isSubscribed || props.anySubmitting}
+              onClick={() => void props.onCheckout(variant.variantId)}
+            >
+              {props.isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Redirecting...
+                </>
+              ) : props.isSubscribed ? (
+                props.isCurrentPlan ? "Current plan" : "Already subscribed"
+              ) : (
+                <>
+                  Get started
+                  <ArrowRight className="size-4" />
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button
+              className="w-full rounded-xl py-4 text-sm sm:py-5"
+              variant={highlight ? "default" : "outline"}
+              onClick={props.onSignIn}
+            >
+              Sign in to subscribe
+              <ArrowRight className="size-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

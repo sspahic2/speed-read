@@ -1,4 +1,7 @@
-import { put } from "@vercel/blob";
+import { del, put } from "@vercel/blob";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("blob");
 
 /**
  * Ensure a per-user folder exists in Vercel Blob by writing a small marker object.
@@ -18,7 +21,7 @@ export async function ensureUserFolder(userId: string) {
 
 export async function uploadJsonToBlob(key: string, data: unknown) {
   const body = JSON.stringify(data, null, 2);
-  const result = await put(key, body, { access: "public", contentType: "application/json" });
+  const result = await put(key, body, { access: "public", contentType: "application/json", allowOverwrite: true });
   return { key: result.url ?? key, url: result.url, pathname: result.pathname };
 }
 
@@ -31,10 +34,16 @@ function buildBlobUrl(keyOrUrl: string) {
   return `${base.replace(/\/+$/, "")}/${keyOrUrl.replace(/^\/+/, "")}`;
 }
 
+export async function deleteBlobByUrl(url: string) {
+  if (!url) throw new Error("Blob URL is required to delete.");
+  log.info("Deleting blob", { url });
+  await del(url);
+}
+
 export async function downloadJsonFromBlob(keyOrUrl: string) {
   if (!keyOrUrl) throw new Error("Blob URL is required to download JSON.");
   const target = buildBlobUrl(keyOrUrl);
-  console.log({target});
+  log.info("Downloading JSON from blob", { target });
   const res = await fetch(target);
   if (!res.ok) {
     const text = await res.text().catch(() => "");

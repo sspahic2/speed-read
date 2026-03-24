@@ -196,5 +196,6 @@ export function useReaderState({ initialBlocks }: UseReaderStateOptions = {}) {
     library,
     loadedBlocks: readerDocument.blocks,
     loadedProgress: readerDocument.loadedProgress,
+    handleCustomTextLoad: readerDocument.handleLibraryLoad,
   };
 }

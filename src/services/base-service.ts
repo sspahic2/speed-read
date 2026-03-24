@@ -51,3 +51,31 @@ export async function post<T>(url: string, body?: unknown, options?: RequestOpti
   });
   return handleResponse<T>(res);
 }
+
+export async function patch<T>(url: string, body?: unknown, options?: RequestOptions): Promise<T> {
+  const target = buildUrl(url, options?.query);
+  const headers = new Headers(options?.headers);
+  if (body !== undefined && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const res = await fetch(target, {
+    method: "PATCH",
+    headers: Object.fromEntries(headers.entries()),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return handleResponse<T>(res);
+}
+
+export async function del<T>(url: string, body?: unknown, options?: RequestOptions): Promise<T> {
+  const target = buildUrl(url, options?.query);
+  const headers = new Headers(options?.headers);
+  if (body !== undefined && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const res = await fetch(target, {
+    method: "DELETE",
+    headers: Object.fromEntries(headers.entries()),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return handleResponse<T>(res);
+}

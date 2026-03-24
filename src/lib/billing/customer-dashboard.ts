@@ -1,5 +1,6 @@
 import type { Prisma } from "../../../prisma/generated/client";
 import prisma from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
 import { BillingValidationError } from "@/lib/billing/errors";
 import { getPublishedBillingCatalog } from "@/lib/billing/lemonsqueezy-catalog";
 import {
@@ -17,6 +18,8 @@ import type {
   PublishedBillingCatalog,
 } from "@/lib/billing/types";
 import { coerceString, normalizePortalUrls } from "@/lib/billing/utils";
+
+const log = createLogger("billing.dashboard");
 
 const BILLING_DASHBOARD_SELECT = {
   accountId: true,
@@ -284,14 +287,34 @@ export async function getFreshBillingPortalUrlsForUser(userId: string): Promise<
   const context = await getBillingContextForUser(userId);
 
   if (!context.billing?.lemonSubscriptionId) {
+    log.warn("No billing subscription found for portal URL request", { userId });
     throw new BillingValidationError("No billing subscription was found for the current user.", 404);
   }
 
+  const subscriptionId = context.billing.lemonSubscriptionId;
   const storedUrls = getStoredPortalUrls(context.billing);
 
+  log.info("Fetching fresh portal URLs from Lemon Squeezy", {
+    userId,
+    subscriptionId,
+    hasStoredPortalUrl: Boolean(storedUrls.customerPortalUrl),
+    hasStoredPaymentUrl: Boolean(storedUrls.updatePaymentMethodUrl),
+    hasStoredSubscriptionUrl: Boolean(storedUrls.updateSubscriptionUrl),
+  });
+
   try {
-    const subscription = await getLemonSubscription(context.billing.lemonSubscriptionId);
+    const subscription = await getLemonSubscription(subscriptionId);
     const freshUrls = normalizePortalUrls(subscription.attributes.urls);
+
+    log.info("Lemon Squeezy subscription response received", {
+      subscriptionId,
+      subscriptionStatus: subscription.attributes.status,
+      hasUrlsField: subscription.attributes.urls != null,
+      freshCustomerPortal: Boolean(freshUrls.customerPortalUrl),
+      freshPaymentMethod: Boolean(freshUrls.updatePaymentMethodUrl),
+      freshSubscription: Boolean(freshUrls.updateSubscriptionUrl),
+    });
+
     const mergedUrls: BillingPortalUrls = {
       customerPortalUrl: freshUrls.customerPortalUrl ?? storedUrls.customerPortalUrl,
       updatePaymentMethodUrl:
@@ -305,7 +328,19 @@ export async function getFreshBillingPortalUrlsForUser(userId: string): Promise<
         freshUrls.updateSubscriptionUrl,
     );
 
+    if (!hasFreshUrl) {
+      log.warn("Lemon Squeezy returned no fresh portal URLs, using stored URLs", {
+        subscriptionId,
+        subscriptionStatus: subscription.attributes.status,
+        mergedCustomerPortal: Boolean(mergedUrls.customerPortalUrl),
+      });
+    }
+
     if (!mergedUrls.customerPortalUrl && !mergedUrls.updatePaymentMethodUrl && !mergedUrls.updateSubscriptionUrl) {
+      log.error("No portal URLs available from API or database", {
+        subscriptionId,
+        subscriptionStatus: subscription.attributes.status,
+      });
       throw new BillingValidationError("Lemon Squeezy did not return any billing action URLs.", 502);
     }
 
@@ -330,7 +365,14 @@ export async function getFreshBillingPortalUrlsForUser(userId: string): Promise<
       fallback: false,
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
     if (storedUrls.customerPortalUrl || storedUrls.updatePaymentMethodUrl || storedUrls.updateSubscriptionUrl) {
+      log.error("Fresh portal URL fetch failed, falling back to stored URLs", {
+        subscriptionId,
+        error: errorMessage,
+        hasStoredPortalUrl: Boolean(storedUrls.customerPortalUrl),
+      });
       return {
         ...storedUrls,
         fresh: false,
@@ -338,6 +380,10 @@ export async function getFreshBillingPortalUrlsForUser(userId: string): Promise<
       };
     }
 
+    log.error("Fresh portal URL fetch failed with no stored fallback", {
+      subscriptionId,
+      error: errorMessage,
+    });
     throw error;
   }
 }

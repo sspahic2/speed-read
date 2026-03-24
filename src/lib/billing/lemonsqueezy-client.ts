@@ -1,5 +1,7 @@
+import { createLogger } from "@/lib/logger";
 import { BillingConfigurationError } from "@/lib/billing/errors";
 
+const log = createLogger("billing.api");
 const LEMONSQUEEZY_API_BASE = "https://api.lemonsqueezy.com/v1";
 
 type JsonApiListResponse<T> = {
@@ -33,6 +35,8 @@ export type LemonProductResource = {
     slug?: string | null;
     status: string;
     test_mode: boolean;
+    thumb_url?: string | null;
+    large_thumb_url?: string | null;
   };
 };
 
@@ -42,10 +46,16 @@ export type LemonVariantResource = {
   attributes: {
     product_id: number;
     name: string;
+    slug?: string | null;
+    description?: string | null;
     status: string;
     price: number;
     interval?: string | null;
+    interval_count?: number | null;
     is_subscription: boolean;
+    has_free_trial?: boolean;
+    trial_interval?: string | null;
+    trial_interval_count?: number | null;
     sort: number;
   };
 };
@@ -144,14 +154,24 @@ function summarizeApiErrorBody(body: string) {
 }
 
 export async function lemonsqueezyRequest<T>(pathOrUrl: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(buildLemonUrl(pathOrUrl), {
+  const url = buildLemonUrl(pathOrUrl);
+  const method = (init.method ?? "GET").toUpperCase();
+
+  const response = await fetch(url, {
     ...init,
     cache: "no-store",
     headers: buildHeaders(init.headers, Boolean(init.body)),
   });
 
   if (!response.ok) {
-    const message = summarizeApiErrorBody(await response.text());
+    const body = await response.text();
+    const message = summarizeApiErrorBody(body);
+    log.error("Lemon Squeezy API request failed", {
+      method,
+      path: pathOrUrl,
+      status: response.status,
+      body: message,
+    });
     throw new BillingConfigurationError(
       `Lemon Squeezy API request failed with status ${response.status}.${message ? ` ${message}` : ""}`,
       response.status >= 500 ? 502 : 500,
@@ -202,8 +222,15 @@ export async function getLemonSubscription(subscriptionId: string) {
   return response.data;
 }
 
+export async function cancelLemonSubscription(subscriptionId: string) {
+  return lemonsqueezyRequest<JsonApiDocumentResponse<LemonSubscriptionResource>>(
+    `/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    { method: "DELETE" },
+  );
+}
+
 export async function listLemonSubscriptionInvoices(subscriptionId: string) {
   return listJsonApiResources<LemonSubscriptionInvoiceResource>(
-    `/subscriptions/${encodeURIComponent(subscriptionId)}/subscription-invoices?page[size]=100`,
+    `/subscription-invoices?filter[subscription_id]=${encodeURIComponent(subscriptionId)}&page[size]=100`,
   );
 }

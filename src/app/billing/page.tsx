@@ -221,7 +221,7 @@ export default async function BillingPage() {
                 label="Last billing sync"
                 value={
                   summary.lastEventAt
-                    ? `${summary.lastEventName ? `${summary.lastEventName} on ` : ""}${formatDisplayDate(summary.lastEventAt, "PPP 'at' p")}`
+                    ? formatDisplayDate(summary.lastEventAt, "PPP 'at' p")
                     : "No webhook event recorded yet"
                 }
               />
@@ -243,10 +243,8 @@ export default async function BillingPage() {
               <BillingActionButtons
                 hasBillingRecord={summary.hasBillingRecord}
                 isSubscribed={summary.isSubscribed}
-                customerPortalUrl={summary.customerPortalUrl}
+                status={summary.status}
                 updatePaymentMethodUrl={summary.updatePaymentMethodUrl}
-                updateSubscriptionUrl={summary.updateSubscriptionUrl}
-                storeBillingUrl={summary.storeBillingUrl}
               />
 
               <div className="rounded-2xl border border-border/60 bg-background/55 px-4 py-4">

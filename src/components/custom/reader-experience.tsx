@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState as useLocalState } from "react";
 import type { CSSProperties } from "react";
 import { FloatingControlsReader } from "@/components/custom/floating-controls-reader";
 import { ReaderPageProgress } from "@/components/custom/reader-page-progress";
@@ -13,9 +12,9 @@ import { useReaderViewport } from "@/components/hooks/use-mobile";
 import { cn } from "@/components/lib/utils";
 import { computeMobileWordFontSize, splitWordAtPivot } from "@/lib/reader-utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { Pause, Play } from "lucide-react";
+import { Minus, Pause, Play, Plus } from "lucide-react";
+import { usePreferences } from "@/components/hooks/use-preferences";
 import { useReaderState } from "@/components/hooks/use-reader-state";
 import type { LibraryBlock } from "@/services/frontend-services/library-service";
 import { useSession } from "next-auth/react";
@@ -54,6 +53,38 @@ function HighlightedWord({ word, className, style, highlightPivot = true }: High
   );
 }
 
+function WpmFlash({ wpm }: { wpm: number }) {
+  const [visible, setVisible] = useLocalState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    setVisible(true);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setVisible(false), 1200);
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [wpm]);
+
+  return (
+    <span
+      className={cn(
+        "text-sm font-semibold tabular-nums tracking-wide text-foreground transition-opacity duration-300",
+        visible ? "opacity-100" : "opacity-0",
+      )}
+    >
+      {wpm} wpm
+    </span>
+  );
+}
+
 export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscribed = false }: ReaderExperienceProps) {
   const { data: session, status } = useSession();
   const {
@@ -85,7 +116,23 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
     onFontSizeChange,
     onWpmChange,
     onRampSecondsChange,
+    setFontSize,
+    setWpm,
+    setRampSeconds,
   } = useReaderState({ initialBlocks });
+
+  usePreferences({
+    isAuthenticated: status === "authenticated",
+    fontSize,
+    wpm,
+    rampSeconds,
+    onLoaded: useCallback((s) => {
+      if (s.fontSize != null) setFontSize(s.fontSize);
+      if (s.wpm != null) setWpm(s.wpm);
+      if (s.rampSeconds != null) setRampSeconds(s.rampSeconds);
+    }, [setFontSize, setWpm, setRampSeconds]),
+  });
+
   const contextWordFontSize = Math.max(fontSize * 0.55, 14);
   const currentWordFontSize = isPhone ? computeMobileWordFontSize(fontSize, currentWord) : fontSize;
   const useSplitDrawerLayout = isLandscapePhone || isPortraitTablet;
@@ -135,29 +182,6 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
     seekWithinPage(value);
   };
 
-  if (status === "authenticated" && !hasSubscriptionAccess) {
-    return (
-      <div className="bg-background text-foreground">
-        <main className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-3xl items-center justify-center px-6 py-10">
-          <Card className="w-full border-border/70 bg-card/80">
-            <CardHeader>
-              <CardTitle>Reader access requires an active subscription.</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-muted-foreground">
-              <p>
-                Your session is authenticated, but the billing entitlement flag is currently off. Open the
-                pricing page to start or manage your plan.
-              </p>
-              <Button asChild>
-                <Link href="/pricing">View pricing</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="relative overflow-hidden bg-background text-foreground">
       <div
@@ -169,6 +193,7 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
         <ReaderDrawer
           fontSize={fontSize}
           wpm={wpm}
+          currentWord={currentWord}
           onFontSizeChange={handleFontSizeChange}
           onWpmChange={handleWpmChange}
           rampSeconds={rampSeconds}
@@ -250,10 +275,16 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
                   </div>
 
                   <div
+                    role="button"
+                    tabIndex={-1}
+                    aria-label={isPlaying ? "Tap to pause" : isCountdownActive ? "Tap to cancel" : undefined}
+                    onClick={() => {
+                      if (isReaderUiDimmed) handlePlayToggle();
+                    }}
                     className={cn(
                       "absolute inset-0 flex items-center justify-center transition-all ease-out",
                       isReaderUiDimmed
-                        ? "translate-y-0 scale-100 opacity-100"
+                        ? "translate-y-0 scale-100 cursor-pointer opacity-100"
                         : "pointer-events-none -translate-y-4 scale-[1.01] opacity-0",
                       isReaderUiDimmed ? "duration-500" : "duration-400",
                     )}
@@ -271,85 +302,118 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
                         </span>
                       </div>
                     ) : (
-                      <div
-                        className={cn(
-                          "flex items-center justify-center",
-                          isPortraitPhone ? "flex-col gap-2" : "flex-row gap-6 md:gap-8",
-                        )}
-                      >
+                      <div className="flex flex-col items-center gap-3">
                         <div
                           className={cn(
-                            "flex min-h-[1.2em] items-center justify-center",
-                            !isPortraitPhone && "min-w-[8ch]",
+                            "flex items-center justify-center",
+                            isPortraitPhone ? "flex-col gap-2" : "flex-row gap-6 md:gap-8",
                           )}
                         >
-                          {displayedPastWords.length > 0 ? (
-                            displayedPastWords.map((word, idx) => (
-                              <HighlightedWord
-                                key={`past-${idx}-${wordIndex}`}
-                                word={word}
-                                className="text-center text-muted-foreground opacity-70"
-                                highlightPivot={false}
-                                style={{
-                                  fontSize: `${contextWordFontSize}px`,
-                                  lineHeight: 1.4,
-                                }}
-                              />
-                            ))
-                          ) : (
-                            <span className="select-none text-transparent" aria-hidden="true">
-                              .
-                            </span>
-                          )}
+                          <div
+                            className={cn(
+                              "flex min-h-[1.2em] items-center justify-center",
+                              !isPortraitPhone && "min-w-[8ch]",
+                            )}
+                          >
+                            {displayedPastWords.length > 0 ? (
+                              displayedPastWords.map((word, idx) => (
+                                <HighlightedWord
+                                  key={`past-${idx}-${wordIndex}`}
+                                  word={word}
+                                  className="text-center text-muted-foreground opacity-70"
+                                  highlightPivot={false}
+                                  style={{
+                                    fontSize: `${contextWordFontSize}px`,
+                                    lineHeight: 1.4,
+                                  }}
+                                />
+                              ))
+                            ) : (
+                              <span className="select-none text-transparent" aria-hidden="true">
+                                .
+                              </span>
+                            )}
+                          </div>
+                          <HighlightedWord
+                            key={wordIndex}
+                            word={currentWord}
+                            className="focus-word font-semibold tracking-tight"
+                            style={{ fontSize: `${currentWordFontSize}px`, lineHeight: 1.4 }}
+                          />
+                          <div
+                            className={cn(
+                              "flex min-h-[1.2em] items-center justify-center",
+                              !isPortraitPhone && "min-w-[8ch]",
+                            )}
+                          >
+                            {displayedFutureWords.length > 0 ? (
+                              displayedFutureWords.map((word, idx) => (
+                                <HighlightedWord
+                                  key={`future-${idx}-${wordIndex}`}
+                                  word={word}
+                                  className="text-center text-muted-foreground opacity-70"
+                                  highlightPivot={false}
+                                  style={{
+                                    fontSize: `${contextWordFontSize}px`,
+                                    lineHeight: 1.4,
+                                  }}
+                                />
+                              ))
+                            ) : (
+                              <span className="select-none text-transparent" aria-hidden="true">
+                                .
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <HighlightedWord
-                          key={wordIndex}
-                          word={currentWord}
-                          className="focus-word font-semibold tracking-tight"
-                          style={{ fontSize: `${currentWordFontSize}px`, lineHeight: 1.4 }}
-                        />
-                        <div
-                          className={cn(
-                            "flex min-h-[1.2em] items-center justify-center",
-                            !isPortraitPhone && "min-w-[8ch]",
-                          )}
-                        >
-                          {displayedFutureWords.length > 0 ? (
-                            displayedFutureWords.map((word, idx) => (
-                              <HighlightedWord
-                                key={`future-${idx}-${wordIndex}`}
-                                word={word}
-                                className="text-center text-muted-foreground opacity-70"
-                                highlightPivot={false}
-                                style={{
-                                  fontSize: `${contextWordFontSize}px`,
-                                  lineHeight: 1.4,
-                                }}
-                              />
-                            ))
-                          ) : (
-                            <span className="select-none text-transparent" aria-hidden="true">
-                              .
-                            </span>
-                          )}
-                        </div>
+
                       </div>
                     )}
                   </div>
                 </div>
               </div>
-              <Button
-                size="icon"
-                variant="secondary"
-                className={cn(
-                  "rounded-full shadow-sm",
-                  isLandscapePhone ? "h-10 w-10" : "h-12 w-12",
-                )}
-                onClick={handlePlayToggle}
-                aria-label={isPlaying ? "Pause" : isCountdownActive ? "Cancel countdown" : "Start"}
-              >
-                {isPlaying || isCountdownActive ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-              </Button>
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex items-center gap-3">
+                  {/* Quick WPM decrease */}
+                  {useMobileControls ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 rounded-full text-muted-foreground"
+                      onClick={(e) => { e.stopPropagation(); setWpm(Math.max(150, wpm - 10)); }}
+                      aria-label="Decrease speed"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="h-12 w-12 rounded-full shadow-sm"
+                    onClick={handlePlayToggle}
+                    aria-label={isPlaying ? "Pause" : isCountdownActive ? "Cancel countdown" : "Start"}
+                  >
+                    {isPlaying || isCountdownActive ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                  </Button>
+
+                  {/* Quick WPM increase */}
+                  {useMobileControls ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 rounded-full text-muted-foreground"
+                      onClick={(e) => { e.stopPropagation(); setWpm(Math.min(350, wpm + 10)); }}
+                      aria-label="Increase speed"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                </div>
+                {useMobileControls ? (
+                  <WpmFlash wpm={wpm} />
+                ) : null}
+              </div>
             </div>
           </div>
           <div

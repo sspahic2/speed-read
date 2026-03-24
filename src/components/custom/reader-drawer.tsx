@@ -22,11 +22,13 @@ import { Slider } from "@/components/ui/slider";
 import { ControlBlock } from "@/components/custom/control-block";
 import { cn } from "@/components/lib/utils";
 import { BookOpen, ChevronUp } from "lucide-react";
+import { splitWordAtPivot } from "@/lib/reader-utils";
 import type { UseLibraryLoaderReturn } from "@/components/hooks/use-library-loader";
 
 type ReaderDrawerProps = {
   fontSize: number;
   wpm: number;
+  currentWord: string;
   onFontSizeChange: (value: number) => void;
   onWpmChange: (value: number) => void;
   rampSeconds: number;
@@ -41,6 +43,7 @@ type ReaderDrawerProps = {
 export function ReaderDrawer({
   fontSize,
   wpm,
+  currentWord,
   onFontSizeChange,
   onWpmChange,
   rampSeconds,
@@ -97,11 +100,12 @@ export function ReaderDrawer({
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           className={cn(
-            "fixed bottom-4 left-1/2 z-40 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card/90 text-foreground shadow-lg backdrop-blur transition-all duration-200",
-            open ? "pointer-events-none translate-y-3 opacity-0" : "pointer-events-auto opacity-100",
+            "fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card/90 px-4 py-2.5 text-foreground shadow-lg backdrop-blur transition-all duration-200",
+            open ? "pointer-events-none translate-y-3 opacity-0" : "pointer-events-auto animate-bounce-subtle opacity-100",
           )}
         >
-          <ChevronUp className="h-5 w-5" />
+          <ChevronUp className="h-4 w-4" />
+          <span className="text-xs font-medium">Controls</span>
         </button>
       </DrawerTrigger>
       <DrawerContent
@@ -149,28 +153,34 @@ export function ReaderDrawer({
                   ) : library.files.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No files saved yet.</p>
                   ) : (
-                    <div className="space-y-2">
-                      {library.files.map((file) => (
-                        <button
-                          key={file.id}
-                          type="button"
-                          className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-muted/40 px-3 py-2 text-left transition hover:border-border hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-                          disabled={!!library.loadingFileId}
-                          onClick={() => library.handleLoad(file.id, file.fileKey, file.fileUrl)}
-                        >
-                          <div className="flex flex-col">
-                            <span className="truncate text-sm font-medium text-foreground group-hover:text-foreground">
-                              {file.fileName}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(file.createdAt).toLocaleString()}
-                            </span>
-                          </div>
-                          {library.loadingFileId === file.id && (
-                            <span className="text-xs text-muted-foreground">Loading...</span>
-                          )}
-                        </button>
-                      ))}
+                    <div className="max-h-[50dvh] space-y-1 overflow-y-auto">
+                      {library.textFiles.length > 0 ? (
+                        <>
+                          <p className="px-1 pb-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60">
+                            Your texts
+                          </p>
+                          {library.textFiles.map((file) => (
+                            <FilePickerRow key={file.id} file={file} library={library} />
+                          ))}
+                        </>
+                      ) : null}
+                      {library.uploadFiles.length > 0 ? (
+                        <>
+                          <p className={cn("px-1 pb-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60", library.textFiles.length > 0 && "mt-4")}>
+                            Books
+                          </p>
+                          {library.uploadFiles.map((file) => (
+                            <FilePickerRow key={file.id} file={file} library={library} />
+                          ))}
+                        </>
+                      ) : null}
+                      {library.textFiles.length === 0 && library.uploadFiles.length === 0 ? (
+                        <div className="space-y-2">
+                          {library.files.map((file) => (
+                            <FilePickerRow key={file.id} file={file} library={library} />
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </DialogContent>
@@ -184,6 +194,7 @@ export function ReaderDrawer({
               label="Font size"
               valueLabel={`${fontSize}px`}
             >
+              <FontSizePreview word={currentWord || "Reading"} fontSize={fontSize} />
               <Slider
                 id="drawer-font-size"
                 value={[fontSize]}
@@ -234,5 +245,45 @@ export function ReaderDrawer({
         </div>
       </DrawerContent>
     </Drawer>
+  );
+}
+
+function FilePickerRow({ file, library }: { file: { id: string; fileName: string; fileKey: string; fileUrl: string; createdAt: string }; library: UseLibraryLoaderReturn }) {
+  return (
+    <button
+      type="button"
+      className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-muted/40 px-3 py-2 text-left transition hover:border-border hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+      disabled={!!library.loadingFileId}
+      onClick={() => library.handleLoad(file.id, file.fileKey, file.fileUrl)}
+    >
+      <div className="flex flex-col">
+        <span className="truncate text-sm font-medium text-foreground group-hover:text-foreground">
+          {file.fileName}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {new Date(file.createdAt).toLocaleString()}
+        </span>
+      </div>
+      {library.loadingFileId === file.id && (
+        <span className="text-xs text-muted-foreground">Loading...</span>
+      )}
+    </button>
+  );
+}
+
+function FontSizePreview({ word, fontSize }: { word: string; fontSize: number }) {
+  const { prefix, pivot, suffix } = splitWordAtPivot(word);
+
+  return (
+    <div className="mb-3 flex items-center justify-center overflow-hidden rounded-xl border border-border/40 bg-background/60 py-4">
+      <span
+        className="font-semibold tracking-tight transition-all duration-150"
+        style={{ fontSize: `${fontSize}px`, lineHeight: 1.3 }}
+      >
+        {prefix}
+        <span className="text-highlight">{pivot}</span>
+        {suffix}
+      </span>
+    </div>
   );
 }

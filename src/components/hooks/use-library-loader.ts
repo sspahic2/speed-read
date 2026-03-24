@@ -22,6 +22,8 @@ export type UseLibraryLoaderReturn = {
   loading: boolean;
   error: string | null;
   files: LibraryFileListItem[];
+  textFiles: LibraryFileListItem[];
+  uploadFiles: LibraryFileListItem[];
   loadingFileId: string | null;
   selectedFile: { id: string; name: string } | null;
   handleLoad: (fileId: string, fileKey: string, fileUrl?: string) => Promise<void>;
@@ -75,12 +77,17 @@ export function useLibraryLoader(onLoaded?: (payload: LoadedPayload) => void): U
     [files, onLoaded],
   );
 
+  const textFiles = files.filter((f) => f.sourceType === "text");
+  const uploadFiles = files.filter((f) => f.sourceType !== "text");
+
   return {
     open,
     setOpen,
     loading,
     error,
     files,
+    textFiles,
+    uploadFiles,
     loadingFileId,
     selectedFile,
     handleLoad,

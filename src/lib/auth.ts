@@ -2,8 +2,11 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import prisma from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
 import { getSubscriptionStateForUser } from "@/lib/billing/subscription-state";
 import { ensureUserFolder } from "@/services/backend-services/blob-service";
+
+const log = createLogger("auth");
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -72,7 +75,7 @@ export const authOptions: NextAuthOptions = {
           token.planInterval = subscriptionState.planInterval;
           token.billingStatus = subscriptionState.status;
         } catch (error) {
-          console.error("Failed to refresh billing session state", {
+          log.error("Failed to refresh billing session state", {
             userId,
             error: error instanceof Error ? error.message : "Unknown billing session error",
           });
@@ -106,7 +109,10 @@ export const authOptions: NextAuthOptions = {
           await ensureUserFolder(user.id);
         }
       } catch (error) {
-        console.error("Failed to create user blob folder", error);
+        log.error("Failed to create user blob folder", {
+          userId: user?.id,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
       }
     },
   },

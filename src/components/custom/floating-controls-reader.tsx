@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { BookOpen } from "lucide-react";
 import type { UseLibraryLoaderReturn } from "@/components/hooks/use-library-loader";
+import { cn } from "@/components/lib/utils";
 
 type FloatingControlsReaderProps = {
   fontSize: number;
@@ -64,40 +65,46 @@ export function FloatingControlsReader({
             <DialogHeader>
               <DialogTitle>Choose a file</DialogTitle>
             </DialogHeader>
-              {library.loading ? (
-                <p className="text-sm text-muted-foreground">Loading...</p>
-              ) : library.error ? (
-                <p className="text-sm text-destructive">{library.error}</p>
-              ) : library.files.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No files saved yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {library.files.map((file) => (
-                    <button
-                      key={file.id}
-                      type="button"
-                      className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-muted/40 px-3 py-2 text-left transition hover:border-border hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-                      disabled={!!library.loadingFileId}
-                      onClick={() => library.handleLoad(file.id, file.fileKey, file.fileUrl)}
-                    >
-                      <div className="flex flex-col">
-                        <span className="truncate text-sm font-medium text-foreground group-hover:text-foreground">
-                          {file.fileName}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(file.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      {library.loadingFileId === file.id && (
-                        <span className="text-xs text-muted-foreground">Loading...</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-        </ControlCard>
+            {library.loading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : library.error ? (
+              <p className="text-sm text-destructive">{library.error}</p>
+            ) : library.files.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No files saved yet.</p>
+            ) : (
+              <div className="max-h-[50dvh] space-y-1 overflow-y-auto">
+                {library.textFiles.length > 0 ? (
+                  <>
+                    <p className="px-1 pb-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60">
+                      Your texts
+                    </p>
+                    {library.textFiles.map((file) => (
+                      <FilePickerRow key={file.id} file={file} library={library} />
+                    ))}
+                  </>
+                ) : null}
+                {library.uploadFiles.length > 0 ? (
+                  <>
+                    <p className={cn("px-1 pb-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60", library.textFiles.length > 0 && "mt-4")}>
+                      Books
+                    </p>
+                    {library.uploadFiles.map((file) => (
+                      <FilePickerRow key={file.id} file={file} library={library} />
+                    ))}
+                  </>
+                ) : null}
+                {library.textFiles.length === 0 && library.uploadFiles.length === 0 ? (
+                  <div className="space-y-2">
+                    {library.files.map((file) => (
+                      <FilePickerRow key={file.id} file={file} library={library} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </ControlCard>
 
       <ControlCard title="Font size" valueLabel={`${fontSize}px`}>
         <Slider
@@ -133,5 +140,28 @@ export function FloatingControlsReader({
         />
       </ControlCard>
     </FloatingControls>
+  );
+}
+
+function FilePickerRow({ file, library }: { file: { id: string; fileName: string; fileKey: string; fileUrl: string; createdAt: string }; library: UseLibraryLoaderReturn }) {
+  return (
+    <button
+      type="button"
+      className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-muted/40 px-3 py-2 text-left transition hover:border-border hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+      disabled={!!library.loadingFileId}
+      onClick={() => library.handleLoad(file.id, file.fileKey, file.fileUrl)}
+    >
+      <div className="flex flex-col">
+        <span className="truncate text-sm font-medium text-foreground group-hover:text-foreground">
+          {file.fileName}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {new Date(file.createdAt).toLocaleString()}
+        </span>
+      </div>
+      {library.loadingFileId === file.id && (
+        <span className="text-xs text-muted-foreground">Loading...</span>
+      )}
+    </button>
   );
 }

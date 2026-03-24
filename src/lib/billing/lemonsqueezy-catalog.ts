@@ -45,14 +45,22 @@ function normalizeVariants(params: {
   currency: string;
 }) {
   const normalized: BillingCatalogVariant[] = params.variants
-    .filter((variant) => variant.attributes.status === "published" && variant.attributes.is_subscription)
+    .filter((variant) =>
+      variant.attributes.status === "published" &&
+      variant.attributes.is_subscription &&
+      variant.attributes.name.toLowerCase() !== "default",
+    )
     .map((variant) => ({
       variantId: variant.id,
       variantName: variant.attributes.name,
+      description: variant.attributes.description?.trim() || null,
       interval: normalizePlanInterval(variant.attributes.interval),
       price: variant.attributes.price,
       currency: params.currency,
       priceFormatted: formatPriceCents(variant.attributes.price, params.currency),
+      hasFreeTrial: Boolean(variant.attributes.has_free_trial),
+      trialInterval: variant.attributes.trial_interval ?? null,
+      trialIntervalCount: variant.attributes.trial_interval_count ?? null,
       sort: variant.attributes.sort,
     }))
     .sort((left, right) => left.sort - right.sort);
@@ -127,6 +135,7 @@ export async function getPublishedBillingCatalog() {
     productId: selectedProduct.id,
     productName: selectedProduct.attributes.name,
     productSlug: coerceString(selectedProduct.attributes.slug),
+    productImageUrl: coerceString(selectedProduct.attributes.large_thumb_url),
     enabledVariantIds: normalizedVariants.map((variant) => variant.variantId),
     variants: normalizedVariants,
     testMode: Boolean(selectedProduct.attributes.test_mode),

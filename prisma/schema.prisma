@@ -24,6 +24,16 @@ model User {
   accounts       Account[]
   libraryFiles   LibraryFile[]
   readerProgress ReaderProgress[]
+  preferences    UserPreferences?
+}
+
+model UserPreferences {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  settings  Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Account {
@@ -125,17 +135,19 @@ model VerificationToken {
 }
 
 model LibraryFile {
-  id        String   @id @default(cuid())
-  userId    String
-  fileKey   String
-  fileUrl   String
-  fileName  String
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  fileKey    String
+  fileUrl    String
+  fileName   String
+  sourceType String   @default("upload")
+  createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   readerProgress ReaderProgress[]
 
   @@index([userId])
+  @@index([userId, sourceType])
 }
 
 model ReaderProgress {
@@ -150,4 +162,17 @@ model ReaderProgress {
   file   LibraryFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
   @@index([fileId])
+}
+
+model AppLog {
+  id        BigInt   @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  level     String   @default("info")
+  message   String
+  metadata  Json?
+  source    String?
+
+  @@index([createdAt(sort: Desc)])
+  @@index([level])
+  @@index([source])
 }

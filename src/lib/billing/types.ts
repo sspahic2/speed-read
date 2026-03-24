@@ -19,10 +19,14 @@ export type BillingPortalUrls = {
 export type BillingCatalogVariant = {
   variantId: string;
   variantName: string;
+  description: string | null;
   interval: BillingPlanInterval;
   price: number;
   currency: string;
   priceFormatted: string;
+  hasFreeTrial: boolean;
+  trialInterval: string | null;
+  trialIntervalCount: number | null;
   sort: number;
 };
 
@@ -35,6 +39,7 @@ export type PublishedBillingCatalog = {
   productId: string;
   productName: string;
   productSlug: string | null;
+  productImageUrl: string | null;
   enabledVariantIds: string[];
   variants: BillingCatalogVariant[];
   testMode: boolean;
