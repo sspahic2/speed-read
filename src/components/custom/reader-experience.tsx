@@ -119,6 +119,7 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
     setFontSize,
     setWpm,
     setRampSeconds,
+    handleCustomTextLoad,
   } = useReaderState({ initialBlocks });
 
   usePreferences({
@@ -200,9 +201,11 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
           onRampSecondsChange={handleRampSecondsChange}
           library={library}
           isAuthenticated={status === "authenticated"}
+          isSubscribed={hasSubscriptionAccess}
           useMobileLayout={useMobileControls}
           isLandscape={isLandscapePhone}
           useSplitLayout={useSplitDrawerLayout}
+          onPasteLoad={handleCustomTextLoad}
         />
       </div>
       <div
@@ -232,6 +235,8 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
               onRampSecondsChange={handleRampSecondsChange}
               library={library}
               isAuthenticated={status === "authenticated"}
+              isSubscribed={hasSubscriptionAccess}
+              onPasteLoad={handleCustomTextLoad}
             />
           </div>
         ) : null}

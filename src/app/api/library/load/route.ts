@@ -54,16 +54,18 @@ export async function POST(request: Request) {
     const blocks = Array.isArray(raw?.blocks)
       ? raw.blocks
           .filter((b: any) => !b?.ignored)
-          .map((b: any) => ({
+          .map((b: any, originalIndex: number) => ({
             ...b,
             page: typeof b?.page === "number" && !Number.isNaN(b.page) ? b.page : Number(b?.page ?? 0),
+            _originalIndex: originalIndex,
           }))
           .sort((a: any, b: any) => {
             const pageA = typeof a?.page === "number" ? a.page : Number(a?.page ?? 0);
             const pageB = typeof b?.page === "number" ? b.page : Number(b?.page ?? 0);
             if (pageA !== pageB) return pageA - pageB;
-            return String(a?.id ?? "").localeCompare(String(b?.id ?? ""));
+            return (a._originalIndex as number) - (b._originalIndex as number);
           })
+          .map(({ _originalIndex, ...block }: any) => block)
       : [];
 
     return NextResponse.json({ ok: true, progress, blocks });

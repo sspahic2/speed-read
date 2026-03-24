@@ -64,6 +64,7 @@ export async function POST(request: Request) {
             },
             checkout_options: {
               embed: false,
+              locale: "en",
             },
             product_options: {
               enabled_variants: selectedCatalogVariant.catalog.enabledVariantIds,

@@ -24,6 +24,8 @@ import { cn } from "@/components/lib/utils";
 import { BookOpen, ChevronUp } from "lucide-react";
 import { splitWordAtPivot } from "@/lib/reader-utils";
 import type { UseLibraryLoaderReturn } from "@/components/hooks/use-library-loader";
+import { PasteTextDialog } from "@/components/custom/paste-text-dialog";
+import type { LibraryLoadPayload } from "@/types/reader";
 
 type ReaderDrawerProps = {
   fontSize: number;
@@ -35,9 +37,11 @@ type ReaderDrawerProps = {
   onRampSecondsChange: (value: number) => void;
   library: UseLibraryLoaderReturn;
   isAuthenticated: boolean;
+  isSubscribed: boolean;
   useMobileLayout: boolean;
   isLandscape: boolean;
   useSplitLayout: boolean;
+  onPasteLoad: (payload: LibraryLoadPayload) => void;
 };
 
 export function ReaderDrawer({
@@ -50,9 +54,11 @@ export function ReaderDrawer({
   onRampSecondsChange,
   library,
   isAuthenticated,
+  isSubscribed,
   useMobileLayout,
   isLandscape,
   useSplitLayout,
+  onPasteLoad,
 }: ReaderDrawerProps) {
   const [open, setOpen] = useState(false);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
@@ -137,9 +143,11 @@ export function ReaderDrawer({
                     <BookOpen className="h-4 w-4" />
                     {library.selectedFile
                       ? truncated(library.selectedFile.name, useSplitLayout ? 16 : 24)
-                      : isAuthenticated
-                        ? "Select file"
-                        : "Sign in to select a file"}
+                      : !isAuthenticated
+                        ? "Sign in to select a file"
+                        : !isSubscribed
+                          ? "Subscription required"
+                          : "Select file"}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -185,6 +193,16 @@ export function ReaderDrawer({
                   )}
                 </DialogContent>
               </Dialog>
+            </ControlBlock>
+          </div>
+
+          <div className={cn(useSplitLayout && "min-w-0")}>
+            <ControlBlock
+              id="drawer-paste"
+              label="Paste text"
+              valueLabel=""
+            >
+              <PasteTextDialog onLoad={onPasteLoad} />
             </ControlBlock>
           </div>
 

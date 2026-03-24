@@ -8,7 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { BookOpen } from "lucide-react";
 import type { UseLibraryLoaderReturn } from "@/components/hooks/use-library-loader";
+import { PasteTextDialog } from "@/components/custom/paste-text-dialog";
 import { cn } from "@/components/lib/utils";
+import type { LibraryLoadPayload } from "@/types/reader";
 
 type FloatingControlsReaderProps = {
   fontSize: number;
@@ -22,6 +24,8 @@ type FloatingControlsReaderProps = {
   onRampSecondsChange: (value: number) => void;
   library: UseLibraryLoaderReturn;
   isAuthenticated: boolean;
+  isSubscribed: boolean;
+  onPasteLoad: (payload: LibraryLoadPayload) => void;
 };
 
 export function FloatingControlsReader({
@@ -36,6 +40,8 @@ export function FloatingControlsReader({
   onRampSecondsChange,
   library,
   isAuthenticated,
+  isSubscribed,
+  onPasteLoad,
 }: FloatingControlsReaderProps) {
   const truncated = (name: string, max = 32) => {
     if (name.length <= max) return name;
@@ -104,6 +110,10 @@ export function FloatingControlsReader({
             )}
           </DialogContent>
         </Dialog>
+      </ControlCard>
+
+      <ControlCard title="Paste text" valueLabel="">
+        <PasteTextDialog onLoad={onPasteLoad} />
       </ControlCard>
 
       <ControlCard title="Font size" valueLabel={`${fontSize}px`}>

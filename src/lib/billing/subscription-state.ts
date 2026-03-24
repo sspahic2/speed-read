@@ -216,7 +216,11 @@ export async function upsertSubscriptionFromPayload(params: {
     );
   }
 
-  const status = coerceString(attributes.status) ?? existingBilling?.status ?? "inactive";
+  const isPaymentEvent = params.eventName.startsWith("subscription_payment_");
+  const rawStatus = coerceString(attributes.status);
+  const status = isPaymentEvent
+    ? existingBilling?.status ?? rawStatus ?? "active"
+    : rawStatus ?? existingBilling?.status ?? "inactive";
   const variantId = coerceString(attributes.variant_id) ?? existingBilling?.variantId ?? null;
   const endsAt = parseOptionalDate(attributes.ends_at);
   const pause = resolvePauseMetadata(attributes.pause);
