@@ -16,18 +16,13 @@ declare global {
   }
 }
 
-const META_TO_TIKTOK_EVENT: Record<string, string> = {
-  Purchase: "CompletePayment",
-};
-
 export function trackPixelEvent(event: string, data?: Record<string, unknown>) {
   if (typeof window !== "undefined") {
     if (typeof window.fbq === "function") {
       window.fbq("track", event, data);
     }
     if (typeof window.ttq?.track === "function") {
-      const ttEvent = META_TO_TIKTOK_EVENT[event] ?? event;
-      window.ttq.track(ttEvent, data);
+      window.ttq.track(event, data);
     }
   }
 }
