@@ -344,8 +344,10 @@ const TERMS_READER_BLOCKS: LibraryBlock[] = (() => {
 })();
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions | Speed Reader",
-  description: "Terms and Conditions for Speed Reader on quicky.now.",
+  title: "Terms & Conditions",
+  description:
+    "Terms and Conditions for Speed Reader on quicky.now. Read the full agreement covering usage, data handling, and your rights.",
+  alternates: { canonical: "/terms-and-conditions" },
 };
 
 export default function TermsAndConditionsPage() {
