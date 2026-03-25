@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { ArrowRight, BookOpen, Gauge, Library, Sparkles, Type, Upload, Zap } from "lucide-react";
+import { ArrowRight, BookOpen, CreditCard, Gauge, Library, Sparkles, Type, Upload, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "@/components/custom/scroll-reveal";
+import { trackPixelEvent } from "@/components/meta-pixel";
 
 const WORDS = ["faster", "smarter", "deeper", "calmer"];
 
@@ -95,8 +96,38 @@ function StatBlock(props: { value: string; label: string }) {
 }
 
 export function HomePageClient() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated";
+  const isSubscribed = session?.user?.isSubscribed === true;
+  const [subscribing, setSubscribing] = useState(false);
+
+  async function handleSubscribe() {
+    if (!isAuthenticated) {
+      signIn("google", { callbackUrl: "/pricing" });
+      return;
+    }
+
+    setSubscribing(true);
+    try {
+      const response = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        checkoutUrl?: string;
+        error?: string;
+      };
+      if (response.ok && body.checkoutUrl) {
+        trackPixelEvent("InitiateCheckout");
+        window.location.assign(body.checkoutUrl);
+      }
+    } catch {
+      // silently fail — user can still use the pricing page
+    } finally {
+      setSubscribing(false);
+    }
+  }
 
   return (
     <main className="min-h-dvh bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.08),transparent_50%)]">
@@ -151,9 +182,17 @@ export function HomePageClient() {
                   <ArrowRight className="size-4" />
                 </Button>
               )}
-              <Button size="lg" variant="outline" className="rounded-full px-7 text-sm sm:px-8" asChild>
-                <Link href="/pricing">See pricing</Link>
-              </Button>
+              {!isSubscribed && (
+                <Button
+                  size="lg"
+                  className="rounded-full bg-highlight px-7 text-sm text-background shadow-[0_8px_24px_hsl(var(--highlight)/0.3)] hover:bg-highlight/90 sm:px-8"
+                  disabled={subscribing}
+                  onClick={handleSubscribe}
+                >
+                  <CreditCard className="size-4" />
+                  {subscribing ? "Loading..." : "Subscribe now"}
+                </Button>
+              )}
               <Button size="lg" variant="ghost" className="rounded-full px-7 text-sm sm:px-8" asChild>
                 <Link href="/reader">
                   <Type className="size-4" />

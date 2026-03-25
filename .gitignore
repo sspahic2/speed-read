@@ -49,4 +49,5 @@ next-env.d.ts
 .agents
 /tasks
 /artifacts
-/scripts/verify-production-billing-ui.mjs
+/scripts
+/recordings

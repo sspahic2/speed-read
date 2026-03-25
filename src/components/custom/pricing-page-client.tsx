@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
+import { trackPixelEvent } from "@/components/meta-pixel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -129,6 +130,7 @@ export function PricingPageClient() {
         throw new Error(body.error ?? "Unable to start checkout.");
       }
 
+      trackPixelEvent("InitiateCheckout");
       window.location.assign(body.checkoutUrl);
     } catch (checkoutError) {
       setError(checkoutError instanceof Error ? checkoutError.message : "Unable to start checkout.");
