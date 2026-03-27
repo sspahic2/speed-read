@@ -116,7 +116,7 @@ export function ReaderDrawer({
       </DrawerTrigger>
       <DrawerContent
         className={cn(
-          "overflow-y-auto",
+          "overflow-hidden",
           isLandscape
             ? "data-[vaul-drawer-direction=bottom]:max-h-[70dvh]"
             : "data-[vaul-drawer-direction=bottom]:max-h-[88dvh]",

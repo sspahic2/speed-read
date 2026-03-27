@@ -141,6 +141,46 @@ export function useReaderState({ initialBlocks }: UseReaderStateOptions = {}) {
     playback.endSeek(readerDocument.currentBlockId, readerDocument.clampedWordIndex);
   }, [playback.endSeek, readerDocument.currentBlockId, readerDocument.clampedWordIndex]);
 
+  const stepForward = useCallback(() => {
+    if (playback.isPlaying) return;
+    const blockIdx = readerDocument.currentBlockIndex;
+    const wordCount = readerDocument.wordCounts[blockIdx] ?? 1;
+    if (readerDocument.clampedWordIndex < wordCount - 1) {
+      readerDocument.setWordIndex(readerDocument.clampedWordIndex + 1);
+    } else if (blockIdx < readerDocument.blocks.length - 1) {
+      readerDocument.setCurrentBlockIndex(blockIdx + 1);
+      readerDocument.setWordIndex(0);
+    }
+  }, [
+    playback.isPlaying,
+    readerDocument.currentBlockIndex,
+    readerDocument.wordCounts,
+    readerDocument.clampedWordIndex,
+    readerDocument.blocks.length,
+    readerDocument.setCurrentBlockIndex,
+    readerDocument.setWordIndex,
+  ]);
+
+  const stepBackward = useCallback(() => {
+    if (playback.isPlaying) return;
+    const blockIdx = readerDocument.currentBlockIndex;
+    if (readerDocument.clampedWordIndex > 0) {
+      readerDocument.setWordIndex(readerDocument.clampedWordIndex - 1);
+    } else if (blockIdx > 0) {
+      const prevIdx = blockIdx - 1;
+      const prevWordCount = readerDocument.wordCounts[prevIdx] ?? 1;
+      readerDocument.setCurrentBlockIndex(prevIdx);
+      readerDocument.setWordIndex(prevWordCount - 1);
+    }
+  }, [
+    playback.isPlaying,
+    readerDocument.currentBlockIndex,
+    readerDocument.wordCounts,
+    readerDocument.clampedWordIndex,
+    readerDocument.setCurrentBlockIndex,
+    readerDocument.setWordIndex,
+  ]);
+
   const onFontSizeChange = useCallback(
     (value: number) => {
       playback.setIsPlaying(false);
@@ -194,6 +234,10 @@ export function useReaderState({ initialBlocks }: UseReaderStateOptions = {}) {
     onRampSecondsChange,
     floatingControls: { isVisible, setIsVisible, side },
     library,
+    totalWords: readerDocument.totalWords,
+    currentPageTotalWords: readerDocument.currentPageTotalWords,
+    stepForward,
+    stepBackward,
     loadedBlocks: readerDocument.blocks,
     loadedProgress: readerDocument.loadedProgress,
     handleCustomTextLoad: readerDocument.handleLibraryLoad,

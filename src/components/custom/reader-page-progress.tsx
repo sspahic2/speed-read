@@ -10,6 +10,7 @@ type ReaderPageProgressProps = {
   activeBlockId: string;
   activeWordOffset: number;
   className?: string;
+  anchorBottom?: boolean;
 };
 
 type RowWord = {
@@ -68,7 +69,7 @@ const getBlockTextClass = (type?: string) => {
     return "italic text-foreground/85";
   }
 
-  return "text-foreground/85";
+  return "text-foreground/80";
 };
 
 const ProgressBlock = memo(function ProgressBlock({
@@ -78,11 +79,11 @@ const ProgressBlock = memo(function ProgressBlock({
   activeWordRef,
 }: ProgressBlockProps) {
   return (
-    <div className={cn("space-y-1", getBlockTextClass(block.type))}>
+    <div className={cn("space-y-1.5", getBlockTextClass(block.type))}>
       {block.rows.map((row, rowIdx) => (
         <p
           key={`${block.id}-row-${rowIdx}`}
-          className="flex flex-wrap items-stretch gap-x-1.5 gap-y-1 text-sm leading-7 md:text-base md:leading-7"
+          className="flex flex-wrap items-baseline gap-x-2 gap-y-1.5 text-[17px] leading-[1.6] md:text-lg md:leading-[1.65]"
         >
           {row.map(({ word, offset }) => {
             const isActiveWord = isActiveBlock && offset === activeWordOffset;
@@ -91,7 +92,7 @@ const ProgressBlock = memo(function ProgressBlock({
                 key={`${block.id}-${offset}`}
                 ref={isActiveWord ? activeWordRef : undefined}
                 className={cn(
-                  "rounded-md px-1 py-0.5 transition-colors duration-200",
+                  "whitespace-nowrap rounded-md px-1 py-0.5 transition-colors duration-200",
                   isActiveWord
                     ? "bg-highlight text-background shadow-[0_8px_24px_hsl(var(--highlight)/0.25),0_0_60px_hsl(var(--highlight)/0.08)]"
                     : "text-inherit",
@@ -113,6 +114,7 @@ export function ReaderPageProgress({
   activeBlockId,
   activeWordOffset,
   className,
+  anchorBottom = false,
 }: ReaderPageProgressProps) {
   const activeWordElementRef = useRef<HTMLSpanElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -144,14 +146,42 @@ export function ReaderPageProgress({
   );
 
   useEffect(() => {
-    activeWordElementRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-      inline: "nearest",
-    });
-    const timeout = window.setTimeout(() => updateBottomFade(), 240);
-    return () => window.clearTimeout(timeout);
-  }, [page, activeBlockId, activeWordOffset, updateBottomFade]);
+    const wordEl = activeWordElementRef.current;
+    const container = scrollContainerRef.current;
+    if (!wordEl || !container) return;
+
+    const containerHeight = container.clientHeight;
+    const wordRect = wordEl.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const wordTopInContent = wordRect.top - containerRect.top + container.scrollTop;
+    // anchorBottom: position the word just above the bottom fade (h-20 = 80px + 20px padding)
+    const anchorY = anchorBottom ? containerHeight - 100 : containerHeight / 2;
+    const targetScroll = Math.max(0, wordTopInContent - anchorY + wordRect.height / 2);
+
+    // Large jump (page change): snap immediately
+    if (Math.abs(container.scrollTop - targetScroll) > containerHeight) {
+      container.scrollTop = targetScroll;
+      updateBottomFade();
+      return;
+    }
+
+    // Smooth lerp scroll
+    let raf: number;
+    const animate = () => {
+      const current = container.scrollTop;
+      const remaining = targetScroll - current;
+      if (Math.abs(remaining) < 0.5) {
+        container.scrollTop = targetScroll;
+        updateBottomFade();
+        return;
+      }
+      container.scrollTop = current + remaining * 0.08;
+      raf = requestAnimationFrame(animate);
+    };
+    raf = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(raf);
+  }, [page, activeBlockId, activeWordOffset, anchorBottom, updateBottomFade]);
 
   useEffect(() => {
     updateBottomFade();
@@ -165,19 +195,16 @@ export function ReaderPageProgress({
       aria-label={`Reading progress on page ${page}`}
       className={cn("relative overflow-hidden", className)}
     >
-      <div className="pointer-events-none absolute inset-0 backdrop-blur-[1px]" />
-      <div className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 h-[60%] w-[70%] rounded-full bg-primary/[0.04] blur-3xl" />
-
       <div
         ref={scrollContainerRef}
         onScroll={updateBottomFade}
-        className="reader-page-progress-scroll relative h-full overflow-y-auto px-6 pb-5 pt-1 md:px-6 md:pb-6"
-        style={{ contentVisibility: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}
+        className="reader-page-progress-scroll relative mx-auto h-full max-w-4xl overflow-y-auto px-4 pb-5 pt-1 antialiased md:px-8 md:pb-6"
+        style={{ contentVisibility: "auto", scrollbarWidth: "none", msOverflowStyle: "none", letterSpacing: "0.01em", wordSpacing: "0.05em" }}
       >
         {pageBlocks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No readable text was found for this page.</p>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-5">
             {pageBlocks.map((block) => (
               <ProgressBlock
                 key={block.id}
@@ -191,7 +218,7 @@ export function ReaderPageProgress({
         )}
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-background/60 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-background to-transparent" />
       <div
         className={cn(
           "pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background via-background/60 to-transparent backdrop-blur-sm transition-opacity duration-300",

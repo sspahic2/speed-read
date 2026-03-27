@@ -74,6 +74,18 @@ export const computeMobileWordFontSize = (baseFontSize: number, word: string): n
   return Math.round(baseFontSize * MOBILE_LONG_WORD_SCALE * 10) / 10;
 };
 
+export const computeWordDelayFactor = (word: string): number => {
+  if (!word) return 1;
+  let factor = 1;
+  const len = getDisplayWordLength(word);
+  if (len >= 12) factor = Math.max(factor, 1.8);
+  else if (len >= 8) factor = Math.max(factor, 1.4);
+  const lastChar = word.trim().slice(-1);
+  if (/[.!?]/.test(lastChar)) factor = Math.max(factor, 2.0);
+  else if (/[,;:]/.test(lastChar)) factor = Math.max(factor, 1.4);
+  return factor;
+};
+
 export const splitWordAtPivot = (word: string): WordPivotParts => {
   const chars = Array.from(word);
   if (chars.length === 0) {

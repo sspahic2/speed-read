@@ -5,6 +5,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { LibraryBlock } from "@/services/frontend-services/library-service";
 import type { Word } from "@/types/reader";
 import {
+  computeWordDelayFactor,
   computeWpmWithRamp,
   PROGRESS_SAVE_INTERVAL,
 } from "@/lib/reader-utils";
@@ -56,6 +57,7 @@ export function useReaderPlayback({
   const tickLockRef = useRef(false);
   const tickTimeoutRef = useRef<number | null>(null);
   const tickTokenRef = useRef(0);
+  const displayedWordIdxRef = useRef(0);
   const currentWordsRef = useRef<Word[]>(activeWords);
   const currentBlockIndexRef = useRef(currentBlockIndex);
   const blocksRef = useRef<LibraryBlock[]>(blocks);
@@ -90,6 +92,7 @@ export function useReaderPlayback({
     }
 
     const token = ++tickTokenRef.current;
+    displayedWordIdxRef.current = clampedWordIndex;
 
     const computeCurrentWpm = () => {
       const elapsedSeconds = (performance.now() - (rampStartRef.current ?? performance.now())) / 1000;
@@ -99,7 +102,11 @@ export function useReaderPlayback({
     const schedule = () => {
       if (token !== tickTokenRef.current) return;
 
-      const intervalMs = Math.max(60, Math.round(60000 / computeCurrentWpm()));
+      const displayedWord = currentWordsRef.current[displayedWordIdxRef.current]?.word ?? "";
+      const delayFactor = computeWordDelayFactor(displayedWord);
+      const baseIntervalMs = Math.max(60, Math.round(60000 / computeCurrentWpm()));
+      const intervalMs = Math.round(baseIntervalMs * delayFactor);
+
       if (tickTimeoutRef.current !== null) {
         window.clearTimeout(tickTimeoutRef.current);
       }
@@ -118,6 +125,7 @@ export function useReaderPlayback({
 
           const nextOffset = prev + 1;
           if (nextOffset < wordsLength) {
+            displayedWordIdxRef.current = nextOffset;
             progressWordCounterRef.current += 1;
             if (!seekInProgressRef.current && progressWordCounterRef.current >= PROGRESS_SAVE_INTERVAL) {
               progressWordCounterRef.current = 0;
@@ -128,6 +136,7 @@ export function useReaderPlayback({
 
           if (blockIndex < blocksSnapshot.length - 1) {
             const nextIndex = blockIndex + 1;
+            displayedWordIdxRef.current = 0;
             setCurrentBlockIndex(nextIndex);
             saveProgress(blocksSnapshot[nextIndex]?.id ?? "", 0);
             return 0;
