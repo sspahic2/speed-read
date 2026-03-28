@@ -11,6 +11,9 @@ type ReaderPageProgressProps = {
   activeWordOffset: number;
   className?: string;
   anchorBottom?: boolean;
+  scrollMode?: boolean;
+  focusTrigger?: number;
+  hideGradients?: boolean;
 };
 
 type RowWord = {
@@ -29,10 +32,13 @@ type ProgressBlockProps = {
   isActiveBlock: boolean;
   activeWordOffset: number;
   activeWordRef?: (node: HTMLSpanElement | null) => void;
+  scrollMode?: boolean;
+  blockPosition: "before" | "active" | "after";
 };
 
 const splitWords = (text?: string) => (text ?? "").split(/\s+/).filter(Boolean);
 const SENTENCES_PER_ROW = 5;
+const PHRASE_AHEAD = 2;
 
 const splitSentences = (text?: string) => {
   const normalized = (text ?? "").replace(/\s+/g, " ").trim();
@@ -72,12 +78,42 @@ const getBlockTextClass = (type?: string) => {
   return "text-foreground/80";
 };
 
+const ACTIVE_HIGHLIGHT = "bg-highlight text-background shadow-[0_8px_24px_hsl(var(--highlight)/0.25),0_0_60px_hsl(var(--highlight)/0.08)]";
+
 const ProgressBlock = memo(function ProgressBlock({
   block,
   isActiveBlock,
   activeWordOffset,
   activeWordRef,
+  scrollMode,
+  blockPosition,
 }: ProgressBlockProps) {
+  const getWordClass = (isActiveWord: boolean, offset: number) => {
+    const base = "whitespace-nowrap rounded-md px-1 py-0.5 transition-[background-color,opacity,box-shadow] duration-300";
+
+    if (isActiveWord) return cn(base, ACTIVE_HIGHLIGHT);
+    if (!scrollMode) return cn(base, "text-inherit");
+
+    const phraseEnd = activeWordOffset + PHRASE_AHEAD;
+
+    // Active phrase: current word + next 2 words get highlight background
+    if (blockPosition === "active" && offset > activeWordOffset && offset <= phraseEnd) {
+      return cn(base, "bg-highlight/15 text-foreground");
+    }
+
+    // Future words beyond phrase: hidden (reveal)
+    if (blockPosition === "after") return cn(base, "opacity-0");
+    if (blockPosition === "active" && offset > phraseEnd) return cn(base, "opacity-0");
+
+    // Past words: graduated spotlight fade
+    if (blockPosition === "before") return cn(base, "text-foreground/[0.06]");
+    const distance = activeWordOffset - offset;
+    if (distance <= 3) return cn(base, "text-foreground/70");
+    if (distance <= 7) return cn(base, "text-foreground/40");
+    if (distance <= 12) return cn(base, "text-foreground/20");
+    return cn(base, "text-foreground/[0.08]");
+  };
+
   return (
     <div className={cn("space-y-1.5", getBlockTextClass(block.type))}>
       {block.rows.map((row, rowIdx) => (
@@ -91,12 +127,7 @@ const ProgressBlock = memo(function ProgressBlock({
               <span
                 key={`${block.id}-${offset}`}
                 ref={isActiveWord ? activeWordRef : undefined}
-                className={cn(
-                  "whitespace-nowrap rounded-md px-1 py-0.5 transition-colors duration-200",
-                  isActiveWord
-                    ? "bg-highlight text-background shadow-[0_8px_24px_hsl(var(--highlight)/0.25),0_0_60px_hsl(var(--highlight)/0.08)]"
-                    : "text-inherit",
-                )}
+                className={getWordClass(isActiveWord, offset)}
               >
                 {word}
               </span>
@@ -115,6 +146,9 @@ export function ReaderPageProgress({
   activeWordOffset,
   className,
   anchorBottom = false,
+  scrollMode,
+  focusTrigger,
+  hideGradients = false,
 }: ReaderPageProgressProps) {
   const activeWordElementRef = useRef<HTMLSpanElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -145,7 +179,14 @@ export function ReaderPageProgress({
     [blocks],
   );
 
+  const activeBlockIndex = useMemo(
+    () => pageBlocks.findIndex((b) => b.id === activeBlockId),
+    [pageBlocks, activeBlockId],
+  );
+
   useEffect(() => {
+    if (!scrollMode) return;
+
     const wordEl = activeWordElementRef.current;
     const container = scrollContainerRef.current;
     if (!wordEl || !container) return;
@@ -181,7 +222,25 @@ export function ReaderPageProgress({
     raf = requestAnimationFrame(animate);
 
     return () => cancelAnimationFrame(raf);
-  }, [page, activeBlockId, activeWordOffset, anchorBottom, updateBottomFade]);
+  }, [scrollMode, page, activeBlockId, activeWordOffset, anchorBottom, updateBottomFade]);
+
+  // One-time scroll to active word (e.g. when drawer closes)
+  useEffect(() => {
+    if (!focusTrigger) return;
+    // Delay to let drawer close animation finish before measuring layout
+    const timeout = window.setTimeout(() => {
+      const wordEl = activeWordElementRef.current;
+      const container = scrollContainerRef.current;
+      if (!wordEl || !container) return;
+      const containerHeight = container.clientHeight;
+      const wordRect = wordEl.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const wordTopInContent = wordRect.top - containerRect.top + container.scrollTop;
+      const targetScroll = Math.max(0, wordTopInContent - containerHeight / 2 + wordRect.height / 2);
+      container.scrollTo({ top: targetScroll, behavior: "smooth" });
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [focusTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     updateBottomFade();
@@ -199,32 +258,38 @@ export function ReaderPageProgress({
         ref={scrollContainerRef}
         onScroll={updateBottomFade}
         className="reader-page-progress-scroll relative mx-auto h-full max-w-4xl overflow-y-auto px-4 pb-5 pt-1 antialiased md:px-8 md:pb-6"
-        style={{ contentVisibility: "auto", scrollbarWidth: "none", msOverflowStyle: "none", letterSpacing: "0.01em", wordSpacing: "0.05em" }}
+        style={{ contentVisibility: "auto", scrollbarWidth: "none", msOverflowStyle: "none", letterSpacing: "0.01em", wordSpacing: "0.05em", WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
       >
         {pageBlocks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No readable text was found for this page.</p>
         ) : (
           <div className="space-y-5">
-            {pageBlocks.map((block) => (
+            {pageBlocks.map((block, idx) => (
               <ProgressBlock
                 key={block.id}
                 block={block}
                 isActiveBlock={block.id === activeBlockId}
                 activeWordOffset={block.id === activeBlockId ? activeWordOffset : -1}
                 activeWordRef={block.id === activeBlockId ? setActiveWordElementRef : undefined}
+                scrollMode={scrollMode}
+                blockPosition={idx < activeBlockIndex ? "before" : idx === activeBlockIndex ? "active" : "after"}
               />
             ))}
           </div>
         )}
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-background to-transparent" />
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background via-background/60 to-transparent backdrop-blur-sm transition-opacity duration-300",
-          showBottomFade ? "opacity-100" : "opacity-0",
-        )}
-      />
+      {!hideGradients && (
+        <>
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-background to-transparent" />
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background via-background/60 to-transparent transition-opacity duration-300",
+              showBottomFade ? "opacity-100" : "opacity-0",
+            )}
+          />
+        </>
+      )}
     </section>
   );
 }

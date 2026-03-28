@@ -42,6 +42,7 @@ type ReaderDrawerProps = {
   isLandscape: boolean;
   useSplitLayout: boolean;
   onPasteLoad: (payload: LibraryLoadPayload) => void;
+  onClose?: () => void;
 };
 
 export function ReaderDrawer({
@@ -59,8 +60,13 @@ export function ReaderDrawer({
   isLandscape,
   useSplitLayout,
   onPasteLoad,
+  onClose,
 }: ReaderDrawerProps) {
   const [open, setOpen] = useState(false);
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) onClose?.();
+  };
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
   const truncated = (name: string, max = 32) => {
@@ -97,7 +103,7 @@ export function ReaderDrawer({
   };
 
   return (
-    <Drawer open={open} onOpenChange={setOpen} direction="bottom">
+    <Drawer open={open} onOpenChange={handleOpenChange} direction="bottom">
       <DrawerTrigger asChild>
         <button
           type="button"
@@ -168,7 +174,7 @@ export function ReaderDrawer({
                             Your texts
                           </p>
                           {library.textFiles.map((file) => (
-                            <FilePickerRow key={file.id} file={file} library={library} />
+                            <FilePickerRow key={file.id} file={file} library={library} onSelect={() => setOpen(false)} />
                           ))}
                         </>
                       ) : null}
@@ -178,14 +184,14 @@ export function ReaderDrawer({
                             Books
                           </p>
                           {library.uploadFiles.map((file) => (
-                            <FilePickerRow key={file.id} file={file} library={library} />
+                            <FilePickerRow key={file.id} file={file} library={library} onSelect={() => setOpen(false)} />
                           ))}
                         </>
                       ) : null}
                       {library.textFiles.length === 0 && library.uploadFiles.length === 0 ? (
                         <div className="space-y-2">
                           {library.files.map((file) => (
-                            <FilePickerRow key={file.id} file={file} library={library} />
+                            <FilePickerRow key={file.id} file={file} library={library} onSelect={() => setOpen(false)} />
                           ))}
                         </div>
                       ) : null}
@@ -202,7 +208,7 @@ export function ReaderDrawer({
               label="Paste text"
               valueLabel=""
             >
-              <PasteTextDialog onLoad={onPasteLoad} />
+              <PasteTextDialog onLoad={(payload) => { onPasteLoad(payload); setOpen(false); }} />
             </ControlBlock>
           </div>
 
@@ -266,13 +272,13 @@ export function ReaderDrawer({
   );
 }
 
-function FilePickerRow({ file, library }: { file: { id: string; fileName: string; fileKey: string; fileUrl: string; createdAt: string }; library: UseLibraryLoaderReturn }) {
+function FilePickerRow({ file, library, onSelect }: { file: { id: string; fileName: string; fileKey: string; fileUrl: string; createdAt: string }; library: UseLibraryLoaderReturn; onSelect?: () => void }) {
   return (
     <button
       type="button"
       className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-muted/40 px-3 py-2 text-left transition hover:border-border hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
       disabled={!!library.loadingFileId}
-      onClick={() => library.handleLoad(file.id, file.fileKey, file.fileUrl)}
+      onClick={() => { library.handleLoad(file.id, file.fileKey, file.fileUrl); onSelect?.(); }}
     >
       <div className="flex flex-col">
         <span className="truncate text-sm font-medium text-foreground group-hover:text-foreground">

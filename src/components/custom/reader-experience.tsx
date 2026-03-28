@@ -9,7 +9,8 @@ import { useReaderPlayPauseTrigger } from "@/components/hooks/reader/use-reader-
 import { useReaderUiDimmedEffect } from "@/components/hooks/reader/use-reader-ui-dimmed-effect";
 import { useReaderViewport } from "@/components/hooks/use-mobile";
 import { cn } from "@/components/lib/utils";
-import { computeMobileWordFontSize, splitWordAtPivot } from "@/lib/reader-utils";
+import { computeMobileWordFontSize } from "@/lib/reader-utils";
+import { OrpWordDisplay } from "@/components/custom/orp-word-display";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Minus, Pause, Play, Plus } from "lucide-react";
@@ -71,13 +72,12 @@ function WpmFlash({ wpm }: { wpm: number }) {
   );
 }
 
-const RING_SIZE = 80;
 const RING_STROKE = 2.5;
-const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-function CountdownRing({ value }: { value: number }) {
+function CountdownRing({ value, size = 80 }: { value: number; size?: number }) {
   const [depleted, setDepleted] = useLocalState(false);
+  const radius = (size - RING_STROKE) / 2;
+  const circumference = 2 * Math.PI * radius;
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setDepleted(true));
@@ -86,29 +86,32 @@ function CountdownRing({ value }: { value: number }) {
 
   return (
     <div className="relative flex items-center justify-center">
-      <svg width={RING_SIZE} height={RING_SIZE} className="-rotate-90">
+      <svg width={size} height={size} className="-rotate-90">
         <circle
-          cx={RING_SIZE / 2}
-          cy={RING_SIZE / 2}
-          r={RING_RADIUS}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
           fill="none"
           className="stroke-muted-foreground/10"
           strokeWidth={RING_STROKE}
         />
         <circle
-          cx={RING_SIZE / 2}
-          cy={RING_SIZE / 2}
-          r={RING_RADIUS}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
           fill="none"
           className="stroke-highlight"
           strokeWidth={RING_STROKE}
           strokeLinecap="round"
-          strokeDasharray={RING_CIRCUMFERENCE}
-          strokeDashoffset={depleted ? RING_CIRCUMFERENCE : 0}
+          strokeDasharray={circumference}
+          strokeDashoffset={depleted ? circumference : 0}
           style={{ transition: depleted ? "stroke-dashoffset 1s linear" : "none" }}
         />
       </svg>
-      <span className="absolute text-[28px] font-semibold leading-none text-foreground">
+      <span
+        className="absolute font-semibold leading-none text-foreground"
+        style={{ fontSize: `${Math.round(size * 0.35)}px` }}
+      >
         {value}
       </span>
     </div>
@@ -153,6 +156,7 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
     stepForward,
     stepBackward,
     handleCustomTextLoad,
+    loadedBlocks,
   } = useReaderState({ initialBlocks });
 
   usePreferences({
@@ -170,9 +174,30 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
   const contextWordFontSize = Math.max(fontSize * 0.55, 14);
   const currentWordFontSize = isPhone ? computeMobileWordFontSize(fontSize, currentWord) : fontSize;
   const useSplitDrawerLayout = isLandscapePhone || isPortraitTablet;
-  const { prefix: wordPrefix, pivot: wordPivot, suffix: wordSuffix } = splitWordAtPivot(currentWord);
   const hasSubscriptionAccess = Boolean(session?.user?.isSubscribed) || initialIsSubscribed;
-  const [readingMode, setReadingMode] = useLocalState<"flash" | "guided">("flash");
+  const [readingMode, setReadingMode] = useLocalState<"flash" | "scroll">("flash");
+  const [focusTrigger, setFocusTrigger] = useLocalState(0);
+
+  // Scroll to active word when new content loads (book selected or text pasted)
+  const firstBlockIdRef = useRef(loadedBlocks[0]?.id);
+  useEffect(() => {
+    const firstId = loadedBlocks[0]?.id;
+    if (firstBlockIdRef.current === firstId || !firstId) return;
+    firstBlockIdRef.current = firstId;
+    const t = setTimeout(() => setFocusTrigger((n) => n + 1), 400);
+    return () => clearTimeout(t);
+  }, [loadedBlocks, setFocusTrigger]);
+
+  // Scroll to active word when playback pauses
+  const wasPlayingRef = useRef(false);
+  useEffect(() => {
+    if (wasPlayingRef.current && !isPlaying) {
+      const t = setTimeout(() => setFocusTrigger((n) => n + 1), 150);
+      wasPlayingRef.current = false;
+      return () => clearTimeout(t);
+    }
+    wasPlayingRef.current = isPlaying;
+  }, [isPlaying, setFocusTrigger]);
   const handleCountdownComplete = useCallback(() => {
     setIsPlaying(true);
   }, [setIsPlaying]);
@@ -190,7 +215,7 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
     cancelCountdown,
     onStepForward: stepForward,
     onStepBackward: stepBackward,
-    skipCountdown: readingMode === "guided",
+    skipCountdown: readingMode !== "flash",
   });
 
   useReaderUiDimmedEffect(isReaderUiDimmed);
@@ -207,13 +232,14 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
     return () => { released = true; lock?.release(); };
   }, [isPlaying]);
 
-  const isGuidedMode = readingMode === "guided";
+  const isGuidedMode = readingMode !== "flash";
   const showPageProgress = !isReaderUiDimmed || isGuidedMode;
   const showRsvpOverlay = isReaderUiDimmed && !isGuidedMode;
 
-  const handleModeChange = (mode: "flash" | "guided") => {
+  const handleModeChange = (mode: "flash" | "scroll") => {
     if (isCountdownActive) cancelCountdown();
     setReadingMode(mode);
+    setTimeout(() => setFocusTrigger((n) => n + 1), 150);
   };
 
   const progressPaddingClass = useMobileControls
@@ -265,6 +291,7 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
           isLandscape={isLandscapePhone}
           useSplitLayout={useSplitDrawerLayout}
           onPasteLoad={handleCustomTextLoad}
+          onClose={() => setFocusTrigger((n) => n + 1)}
         />
       </div>
       <div
@@ -324,9 +351,7 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
                     role={isGuidedMode && isPlaying ? "button" : undefined}
                     tabIndex={isGuidedMode && isPlaying ? -1 : undefined}
                     aria-label={isGuidedMode && isPlaying ? "Tap to pause" : undefined}
-                    onClick={() => {
-                      if (isGuidedMode && isReaderUiDimmed) handlePlayToggle();
-                    }}
+                    onClick={isGuidedMode && isReaderUiDimmed ? handlePlayToggle : undefined}
                     className={cn(
                       "absolute inset-0 transition-all ease-out",
                       showPageProgress
@@ -337,11 +362,13 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
                   >
                     <ReaderPageProgress
                       page={currentPage}
-                      blocks={currentPageBlocks}
+                      blocks={isGuidedMode ? loadedBlocks.filter((b) => { const p = b.page ?? 1; return p >= currentPage - 1 && p <= currentPage + 1; }) : currentPageBlocks}
                       activeBlockId={currentBlockId}
                       activeWordOffset={currentWordOffset}
                       className="h-full"
                       anchorBottom={isGuidedMode}
+                      scrollMode={(isGuidedMode && isPlaying) || undefined}
+                      focusTrigger={focusTrigger}
                     />
                   </div>
 
@@ -354,102 +381,17 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
                     className="absolute inset-0 flex cursor-pointer items-center justify-center pt-[8vh]"
                   >
                     {isCountdownActive && countdownValue != null ? (
-                      <CountdownRing key={countdownValue} value={countdownValue} />
+                      <CountdownRing key={countdownValue} value={countdownValue} size={isLandscapePhone ? 56 : 80} />
                     ) : (
-                      <div className="flex w-full flex-col items-center gap-3" key={wordIndex}>
-                        {isPortraitPhone ? (
-                          /* ── Mobile: vertical stack with ORP word ── */
-                          <div className="flex w-full flex-col items-center gap-2">
-                            <span
-                              className="min-h-[1.2em] text-center text-muted-foreground/60"
-                              style={{ fontSize: `${contextWordFontSize}px`, lineHeight: 1.4 }}
-                            >
-                              {displayedPastWords[0] ?? "\u00A0"}
-                            </span>
-                            <div className="relative w-full">
-                              <div className="absolute left-1/2 -top-2 h-1.5 w-px -translate-x-1/2 bg-muted-foreground/20" />
-                              <div className="absolute left-1/2 -bottom-2 h-1.5 w-px -translate-x-1/2 bg-muted-foreground/20" />
-                              <div
-                                className="grid w-full"
-                                style={{ gridTemplateColumns: "1fr auto 1fr" }}
-                              >
-                                <span
-                                  className="text-right font-semibold tracking-normal focus-word"
-                                  style={{ fontSize: `${currentWordFontSize}px`, lineHeight: 1.4 }}
-                                >
-                                  {wordPrefix}
-                                </span>
-                                <span
-                                  className="font-semibold tracking-normal text-highlight focus-word"
-                                  style={{ fontSize: `${currentWordFontSize}px`, lineHeight: 1.4 }}
-                                >
-                                  {wordPivot || "\u00A0"}
-                                </span>
-                                <span
-                                  className="font-semibold tracking-normal focus-word"
-                                  style={{ fontSize: `${currentWordFontSize}px`, lineHeight: 1.4 }}
-                                >
-                                  {wordSuffix}
-                                </span>
-                              </div>
-                            </div>
-                            <span
-                              className="min-h-[1.2em] text-center text-muted-foreground/60"
-                              style={{ fontSize: `${contextWordFontSize}px`, lineHeight: 1.4 }}
-                            >
-                              {displayedFutureWords[0] ?? "\u00A0"}
-                            </span>
-                          </div>
-                        ) : (
-                          /* ── Desktop: horizontal ORP with inline context ── */
-                          <div className="relative w-full max-w-4xl">
-                            <div className="absolute left-1/2 -top-3 h-2 w-px -translate-x-1/2 bg-muted-foreground/20" />
-                            <div className="absolute left-1/2 -bottom-3 h-2 w-px -translate-x-1/2 bg-muted-foreground/20" />
-                            <div
-                              className="grid w-full items-baseline"
-                              style={{ gridTemplateColumns: "1fr auto 1fr" }}
-                            >
-                              <div className="flex items-baseline justify-end gap-4 overflow-hidden">
-                                {displayedPastWords[0] && (
-                                  <span
-                                    className="whitespace-nowrap text-muted-foreground/60"
-                                    style={{ fontSize: `${contextWordFontSize}px`, lineHeight: 1.4 }}
-                                  >
-                                    {displayedPastWords[0]}
-                                  </span>
-                                )}
-                                <span
-                                  className="whitespace-nowrap font-semibold tracking-normal focus-word"
-                                  style={{ fontSize: `${currentWordFontSize}px`, lineHeight: 1.4 }}
-                                >
-                                  {wordPrefix}
-                                </span>
-                              </div>
-                              <span
-                                className="font-semibold tracking-normal text-highlight focus-word"
-                                style={{ fontSize: `${currentWordFontSize}px`, lineHeight: 1.4 }}
-                              >
-                                {wordPivot || "\u00A0"}
-                              </span>
-                              <div className="flex items-baseline justify-start gap-4 overflow-hidden">
-                                <span
-                                  className="whitespace-nowrap font-semibold tracking-normal focus-word"
-                                  style={{ fontSize: `${currentWordFontSize}px`, lineHeight: 1.4 }}
-                                >
-                                  {wordSuffix}
-                                </span>
-                                {displayedFutureWords[0] && (
-                                  <span
-                                    className="whitespace-nowrap text-muted-foreground/60"
-                                    style={{ fontSize: `${contextWordFontSize}px`, lineHeight: 1.4 }}
-                                  >
-                                    {displayedFutureWords[0]}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                      <div className="flex w-full flex-col items-center gap-3">
+                        <OrpWordDisplay
+                          word={currentWord}
+                          pastWord={displayedPastWords[0]}
+                          futureWord={displayedFutureWords[0]}
+                          fontSize={currentWordFontSize}
+                          contextFontSize={contextWordFontSize}
+                          vertical={isPortraitPhone}
+                        />
                       </div>
                     )}
                   </div>
@@ -474,7 +416,10 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
                   <Button
                     size="icon"
                     variant="secondary"
-                    className="h-12 w-12 rounded-full shadow-sm"
+                    className={cn(
+                      "h-12 w-12 rounded-full shadow-sm",
+                      isCountdownActive && "animate-pulse ring-2 ring-highlight/40",
+                    )}
                     onClick={handlePlayToggle}
                     aria-label={isPlaying ? "Pause" : isCountdownActive ? "Cancel countdown" : "Start"}
                   >
@@ -494,9 +439,7 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
                     </Button>
                   ) : null}
                 </div>
-                {useMobileControls ? (
-                  <WpmFlash wpm={wpm} />
-                ) : null}
+                <WpmFlash wpm={wpm} />
                 {/* Mode switcher */}
                 <div className="flex items-center rounded-full border border-border/50 bg-card/40 p-0.5">
                   <button
@@ -513,11 +456,11 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
                   <button
                     className={cn(
                       "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                      readingMode === "guided"
+                      readingMode === "scroll"
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground",
                     )}
-                    onClick={() => handleModeChange("guided")}
+                    onClick={() => handleModeChange("scroll")}
                   >
                     Scroll
                   </button>
@@ -557,6 +500,7 @@ export function ReaderExperience({ initialBlocks, isSubscribed: initialIsSubscri
                 onValueCommit={() => {
                   if (isPlaying) return;
                   endSeek();
+                  setTimeout(() => setFocusTrigger((n) => n + 1), 100);
                 }}
               />
             </div>

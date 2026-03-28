@@ -6,6 +6,7 @@ import { signIn, useSession } from "next-auth/react";
 import { ArrowRight, BookOpen, CreditCard, Gauge, Library, Sparkles, Type, Upload, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "@/components/custom/scroll-reveal";
+import { HeroReaderDemo } from "@/components/custom/hero-reader-demo";
 import { trackPixelEvent } from "@/components/meta-pixel";
 
 const WORDS = ["faster", "smarter", "deeper", "calmer"];
@@ -136,58 +137,28 @@ export function HomePageClient() {
       <section className="relative overflow-hidden">
         <FloatingShapes />
 
-        <div className="relative mx-auto flex max-w-5xl flex-col items-center gap-6 px-4 pb-16 pt-12 text-center sm:gap-8 sm:px-6 sm:pb-24 sm:pt-20 md:pt-28">
-          {/* Pill */}
-          <ScrollReveal>
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
-              <Sparkles className="size-3.5 text-primary" />
-              <span className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-primary sm:text-xs">
-                Speed reading reimagined
-              </span>
-            </div>
-          </ScrollReveal>
-
-          {/* Headline */}
-          <ScrollReveal delay={100}>
-            <h1 className="max-w-lg text-3xl font-bold leading-[1.15] tracking-tight sm:max-w-2xl sm:text-5xl md:text-6xl">
-              Read <WordCycler /> with<br className="hidden sm:inline" /> zero distractions
-            </h1>
-          </ScrollReveal>
-
-          {/* Subheadline */}
+        <div className="relative mx-auto flex flex-col items-center gap-6 px-4 pb-10 pt-10 text-center sm:gap-8 sm:px-6 sm:pb-20 sm:pt-16 md:pt-24">
+          {/* Live reader demo */}
           <ScrollReveal delay={200}>
-            <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:max-w-lg sm:text-base md:text-lg">
-              Upload your books, set your pace, and let RSVP technology
-              do the rest. One word at a time, at the speed you choose.
-            </p>
+            <HeroReaderDemo />
           </ScrollReveal>
 
           {/* CTAs */}
           <ScrollReveal delay={300}>
             <div className="flex flex-col gap-3 sm:flex-row">
-              {isAuthenticated ? (
+              {isSubscribed ? (
                 <Button size="lg" className="rounded-full px-7 text-sm sm:px-8" asChild>
                   <Link href="/library">
-                    Get started
+                    Go to library
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
               ) : (
                 <Button
                   size="lg"
-                  className="rounded-full px-7 text-sm sm:px-8"
-                  onClick={() => signIn("google", { callbackUrl: "/library" })}
-                >
-                  Get started free
-                  <ArrowRight className="size-4" />
-                </Button>
-              )}
-              {!isSubscribed && (
-                <Button
-                  size="lg"
                   className="rounded-full bg-highlight px-7 text-sm text-background shadow-[0_8px_24px_hsl(var(--highlight)/0.3)] hover:bg-highlight/90 sm:px-8"
                   disabled={subscribing}
-                  onClick={handleSubscribe}
+                  onClick={isAuthenticated ? handleSubscribe : () => signIn("google", { callbackUrl: "/pricing" })}
                 >
                   <CreditCard className="size-4" />
                   {subscribing ? "Loading..." : "Subscribe now"}
@@ -201,9 +172,6 @@ export function HomePageClient() {
               </Button>
             </div>
           </ScrollReveal>
-
-          {/* Decorative divider */}
-          <div className="mt-4 h-px w-2/3 max-w-xs bg-gradient-to-r from-transparent via-border to-transparent sm:mt-8" />
         </div>
       </section>
 

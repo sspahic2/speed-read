@@ -70,7 +70,7 @@ export function PasteTextDialog({ onLoad, trigger }: PasteTextDialogProps) {
         </DialogHeader>
         <textarea
           className="h-32 w-full resize-none rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60 sm:h-48"
-          placeholder="Paste a speech, article, or any text you want to practice reading..."
+          placeholder="Paste any text — speeches, articles, emails, book chapters. Multiple paragraphs are fine."
           value={text}
           onChange={(e) => setText(e.target.value)}
         />

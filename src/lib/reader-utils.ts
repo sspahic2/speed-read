@@ -28,7 +28,7 @@ const CORE_WORD_CHARS_REGEX = /[\p{L}\p{N}]/gu;
 const CORE_WORD_CHAR_REGEX = /[\p{L}\p{N}]/u;
 const LONG_WORD_LENGTH_THRESHOLD = 7;
 const MOBILE_LONG_WORD_SCALE = 0.8;
-const MOBILE_DOWNSCALE_MIN_FONT_SIZE = 40;
+const MOBILE_DOWNSCALE_MIN_FONT_SIZE = 37;
 
 export type WordPivotParts = {
   prefix: string;
@@ -71,7 +71,12 @@ export const computeMobileWordFontSize = (baseFontSize: number, word: string): n
 
   const wordLength = getDisplayWordLength(word);
   if (wordLength < LONG_WORD_LENGTH_THRESHOLD) return baseFontSize;
-  return Math.round(baseFontSize * MOBILE_LONG_WORD_SCALE * 10) / 10;
+  const scale =
+    wordLength >= 14 ? 0.55 :
+    wordLength >= 11 ? 0.65 :
+    wordLength >= 9  ? 0.72 :
+    MOBILE_LONG_WORD_SCALE;
+  return Math.round(baseFontSize * scale * 10) / 10;
 };
 
 export const computeWordDelayFactor = (word: string): number => {
